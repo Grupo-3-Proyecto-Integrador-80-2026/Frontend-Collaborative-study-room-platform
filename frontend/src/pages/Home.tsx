@@ -1,35 +1,46 @@
 import { useState, useEffect, useCallback } from 'react';
 
-interface HealthData {
+interface FirestoreHealthData {
+  connected: boolean;
   message: string;
-  source: string;
+  documentsFound: number;
   timestamp?: string;
 }
 
 export default function Home() {
-  const [data, setData] = useState<HealthData | null>(null);
+  const [data, setData] = useState<FirestoreHealthData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchHealthCheck = useCallback(async () => {
+  const fetchFirestoreCheck = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     const apiUrl = import.meta.env.VITE_API_URL || 'https://tu-api.onrender.com';
 
     try {
-      const response = await fetch(`${apiUrl}/api/health`, {
+      // Consumimos el endpoint del backend que realmente hace la consulta a Firestore
+      const response = await fetch(`${apiUrl}/api/test/firebase`, {
         headers: {
           'Accept': 'application/json',
         },
       });
 
       if (!response.ok) {
-        throw new Error(`Error en el servidor: Código HTTP ${response.status}`);
+        throw new Error(`Error en el servidor: Código de respuesta HTTP ${response.status}`);
       }
 
       const json = await response.json();
-      setData(json);
+      
+      // Agregamos marca de tiempo local de la consulta exitosa
+      setData({
+        ...json,
+        timestamp: new Date().toLocaleTimeString('es-CO', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }),
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error desconocido al conectar con la API';
       setError(msg);
@@ -39,8 +50,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchHealthCheck();
-  }, [fetchHealthCheck]);
+    fetchFirestoreCheck();
+  }, [fetchFirestoreCheck]);
 
   return (
     <section aria-labelledby="home-title" className="space-y-6">
@@ -49,9 +60,9 @@ export default function Home() {
           Sprint 0: Base Técnica End-to-End
         </h1>
         <p className="mt-2 text-surface-muted">
-          Esta vista verifica la conexión síncrona desacoplada: <br />
-          <code className="text-xs bg-slate-100 px-1 py-0.5 rounded text-indigo-700">
-            Frontend (Vercel) ➔ API (Render / Docker) ➔ Cloud Firestore
+          Esta vista verifica la conexión síncrona desacoplada de la plataforma: <br />
+          <code className="text-xs bg-slate-100 px-2 py-1 rounded text-brand-700 font-mono inline-block mt-2">
+            Frontend (Vercel) ➔ API (Render) ➔ Cloud Firestore (Colección users)
           </code>
         </p>
       </div>
@@ -67,7 +78,7 @@ export default function Home() {
 
         {/* ESTADO 1: CARGANDO ⏳ */}
         {loading && (
-          <div className="flex items-center gap-3 text-indigo-700 py-4" role="status">
+          <div className="flex items-center gap-3 text-brand-700 py-6" role="status">
             <svg
               className="animate-spin h-6 w-6 text-brand-600"
               xmlns="http://www.w3.org/2000/svg"
@@ -78,49 +89,70 @@ export default function Home() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
             </svg>
-            <span className="font-medium text-base">⏳ Consultando el estado de la base de datos...</span>
+            <span className="font-medium text-base">⏳ Consultando el estado de la base de datos Firestore...</span>
           </div>
         )}
 
         {/* ESTADO 2: ERROR ❌ CON BOTÓN REINTENTAR */}
         {!loading && error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800 space-y-3" role="alert">
+          <div className="p-5 bg-red-50 border border-red-200 rounded-md text-red-900 space-y-3" role="alert">
             <div className="flex items-center gap-2 font-semibold">
               <span aria-hidden="true" className="text-xl">❌</span>
-              <span>No se pudo obtener el dato desde la API</span>
+              <span>No se pudo conectar con la API o con Firestore</span>
             </div>
             <p className="text-sm text-red-700">{error}</p>
-            <button
-              onClick={fetchHealthCheck}
-              type="button"
-              className="px-4 py-2 bg-red-700 text-white rounded font-medium text-sm hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-700 transition"
-            >
-              🔄 Reintentar conexión
-            </button>
+            <div>
+              <button
+                onClick={fetchFirestoreCheck}
+                type="button"
+                className="px-4 py-2 bg-red-700 text-white rounded font-medium text-sm hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-700 transition"
+              >
+                🔄 Reintentar conexión
+              </button>
+            </div>
           </div>
         )}
 
         {/* ESTADO 3: ÉXITO ✅ */}
         {!loading && !error && data && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-900 space-y-3">
+          <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-900 space-y-4">
             <div className="flex items-center gap-2">
-              <span aria-hidden="true" className="text-xl">✅</span>
-              <span className="font-semibold text-emerald-800">Dato recuperado exitosamente desde Firestore:</span>
+              <span aria-hidden="true" className="text-2xl">✅</span>
+              <span className="font-semibold text-emerald-800 text-base">
+                Conexión exitosa y dato recuperado desde Firestore:
+              </span>
             </div>
-            <div className="bg-white p-4 rounded border border-emerald-200 font-mono text-sm text-slate-800">
-              <p><strong>Valor:</strong> {data.message}</p>
-              <p className="text-xs text-slate-500 mt-1"><strong>Origen:</strong> {data.source}</p>
+
+            <div className="bg-white p-4 rounded border border-emerald-200 font-mono text-sm text-slate-800 space-y-2">
+              <p>
+                <strong>Estado de conexión:</strong>{' '}
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">
+                  {data.connected ? 'CONECTADO' : 'DESCONECTADO'}
+                </span>
+              </p>
+              <p>
+                <strong>Respuesta de la BD:</strong> {data.message}
+              </p>
+              <p>
+                <strong>Documentos encontrados en Firestore (users):</strong>{' '}
+                <span className="font-bold text-brand-600">{data.documentsFound}</span>
+              </p>
               {data.timestamp && (
-                <p className="text-xs text-slate-500"><strong>Fecha/Hora:</strong> {data.timestamp}</p>
+                <p className="text-xs text-slate-500 pt-1 border-t border-slate-100">
+                  <strong>Última consulta realizada:</strong> {data.timestamp}
+                </p>
               )}
             </div>
-            <button
-              onClick={fetchHealthCheck}
-              type="button"
-              className="px-4 py-2 bg-brand-600 text-white rounded font-medium text-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-600 transition"
-            >
-              Refrescar dato
-            </button>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={fetchFirestoreCheck}
+                type="button"
+                className="px-4 py-2 bg-brand-600 text-white rounded font-medium text-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-600 transition"
+              >
+                🔄 Refrescar dato de Firestore
+              </button>
+            </div>
           </div>
         )}
       </div>

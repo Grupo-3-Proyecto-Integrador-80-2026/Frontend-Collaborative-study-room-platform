@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 export default function NotFound() {
   return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center text-center px-4">
-      <span className="text-6xl mb-2" role="img" aria-label="Lupa de búsqueda">🔍</span>
+      <span className="text-6xl mb-3" role="img" aria-label="Lupa de búsqueda indicando no encontrado">
+        🔍
+      </span>
       <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
         404 - Página no encontrada
       </h1>
