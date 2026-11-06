@@ -58,24 +58,24 @@ export default function Home() {
 
   return (
     <section aria-labelledby="home-title" className="space-y-6">
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+      <div className="bg-surface-card p-6 rounded-lg shadow-sm border border-surface-border">
         <h1 id="home-title" className="text-2xl font-bold text-surface-text">
           Sprint 0: Base Técnica End-to-End
         </h1>
         <p className="mt-2 text-surface-muted">
           Esta vista verifica la conexión síncrona desacoplada de la plataforma: <br />
-          <code className="text-xs bg-slate-100 px-2 py-1 rounded text-brand-700 font-mono inline-block mt-2">
+          <code className="text-xs bg-brand-50 px-2 py-1 rounded-lg text-brand-600 font-mono inline-block mt-2">
             Frontend (Vercel) ➔ API (Render) ➔ Cloud Firestore (Colección users)
           </code>
         </p>
       </div>
 
       <div
-        className="p-6 rounded-lg border bg-white shadow-sm"
+        className="p-6 rounded-lg border border-surface-border bg-surface-card shadow-sm"
         aria-live="polite"
         aria-atomic="true"
       >
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">
+        <h2 className="text-lg font-semibold text-surface-text mb-4">
           Estado de la Conexión con Firestore
         </h2>
 
@@ -98,7 +98,7 @@ export default function Home() {
 
         {/* ESTADO 2: ERROR ❌ CON BOTÓN REINTENTAR */}
         {!loading && error && (
-          <div className="p-5 bg-red-50 border border-red-200 rounded-md text-red-900 space-y-3" role="alert">
+          <div className="p-5 bg-red-50 border border-red-700 rounded-lg text-red-900 space-y-3" role="alert">
             <div className="flex items-center gap-2 font-semibold">
               <span aria-hidden="true" className="text-xl">❌</span>
               <span>No se pudo conectar con la API o con Firestore</span>
@@ -108,7 +108,7 @@ export default function Home() {
               <button
                 onClick={fetchFirestoreCheck}
                 type="button"
-                className="px-4 py-2 bg-red-700 text-white rounded font-medium text-sm hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-700 transition"
+                className="inline-flex min-h-11 items-center px-5 bg-red-700 text-white rounded-lg font-semibold text-sm hover:bg-red-800 transition"
               >
                 🔄 Reintentar conexión
               </button>
@@ -118,18 +118,18 @@ export default function Home() {
 
         {/* ESTADO 3: ÉXITO ✅ */}
         {!loading && !error && data && (
-          <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-900 space-y-4">
+          <div className="p-5 bg-emerald-50 border border-emerald-700 rounded-lg text-emerald-900 space-y-4">
             <div className="flex items-center gap-2">
               <span aria-hidden="true" className="text-2xl">✅</span>
-              <span className="font-semibold text-emerald-800 text-base">
+              <span className="font-semibold text-emerald-700 text-base">
                 Conexión exitosa y dato recuperado desde Firestore:
               </span>
             </div>
 
-            <div className="bg-white p-4 rounded border border-emerald-200 font-mono text-sm text-slate-800 space-y-2">
+            <div className="bg-surface-card p-4 rounded-lg border border-surface-border font-mono text-sm text-surface-text space-y-2">
               <p>
                 <strong>Estado de conexión:</strong>{' '}
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
                   {data.connected ? 'CONECTADO' : 'DESCONECTADO'}
                 </span>
               </p>
@@ -141,7 +141,7 @@ export default function Home() {
                 <span className="font-bold text-brand-600">{data.documentsFound}</span>
               </p>
               {data.timestamp && (
-                <p className="text-xs text-slate-500 pt-1 border-t border-slate-100">
+                <p className="text-xs text-surface-muted pt-1 border-t border-surface-border">
                   <strong>Última consulta realizada:</strong> {data.timestamp}
                 </p>
               )}
@@ -151,7 +151,7 @@ export default function Home() {
               <button
                 onClick={fetchFirestoreCheck}
                 type="button"
-                className="px-4 py-2 bg-brand-600 text-white rounded font-medium text-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-600 transition"
+                className="inline-flex min-h-11 items-center px-5 bg-brand-600 text-white rounded-lg font-semibold text-sm hover:bg-brand-700 transition"
               >
                 🔄 Refrescar dato de Firestore
               </button>

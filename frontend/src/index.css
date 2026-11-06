@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans text-surface-text bg-surface-bg;
+  }
+
+  /* Indicador de foco de la guía visual: contorno de 3 px primario con 2 px de separación */
+  :focus-visible {
+    outline: 3px solid #3730A3;
+    outline-offset: 2px;
+  }
+}
