@@ -26,12 +26,15 @@ export default function Home() {
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Error en el servidor: Código de respuesta HTTP ${response.status}`);
+      const json: FirestoreHealthData | null = await response.json().catch(() => null);
+
+      // Si la API falla o Firestore no responde (connected: false), se muestra el estado de error
+      if (!response.ok || !json?.connected) {
+        throw new Error(
+          json?.message || `Error en el servidor: Código de respuesta HTTP ${response.status}`
+        );
       }
 
-      const json = await response.json();
-      
       // Agregamos marca de tiempo local de la consulta exitosa
       setData({
         ...json,
