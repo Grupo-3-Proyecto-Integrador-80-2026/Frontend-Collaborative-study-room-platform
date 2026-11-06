@@ -30,7 +30,7 @@ const MapSitePlaceholder: React.FC<{
   icon: string;
 }> = ({ title, description, sprint, icon }) => (
   <section aria-labelledby="page-title" className="space-y-4">
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+    <div className="bg-surface-card p-6 rounded-lg shadow-sm border border-surface-border">
       <div className="flex items-center gap-3">
         <span className="text-3xl" aria-hidden="true">{icon}</span>
         <div>
@@ -89,21 +89,21 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {/* Enlace de salto accesible WCAG 2.4.1 */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-brand-600 focus:text-white focus:rounded focus:outline-none focus:ring-4 focus:ring-brand-500 font-medium"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-6 focus:py-3 focus:bg-brand-600 focus:text-white focus:rounded-lg font-semibold"
       >
         Saltar al contenido principal
       </a>
 
       {/* Encabezado accesible WCAG */}
-      <header className="bg-brand-900 text-white border-b border-indigo-950 px-6 py-4 shadow-sm" role="banner">
+      <header className="bg-surface-card border-b border-surface-border px-6 py-3" role="banner">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <Link to="/" className="flex items-center gap-3 text-white hover:text-indigo-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white rounded">
-            <span className="text-2xl" aria-hidden="true">📖</span>
-            <span className="text-xl font-bold tracking-tight">{APP_NAME}</span>
+          <Link to="/" className="flex items-center gap-3 min-h-11 text-surface-text hover:text-brand-600 transition rounded-lg">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-lg" aria-hidden="true">📖</span>
+            <span className="text-lg font-bold tracking-tight">{APP_NAME}</span>
           </Link>
 
           <nav aria-label="Navegación principal">
-            <ul className="flex flex-wrap gap-2 text-sm font-medium">
+            <ul className="flex flex-wrap gap-1 text-sm font-medium">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.path;
                 return (
@@ -111,10 +111,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     <Link
                       to={link.path}
                       aria-current={isActive ? 'page' : undefined}
-                      className={`px-3 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                      className={`inline-flex min-h-11 items-center px-3 rounded-lg transition-colors ${
                         isActive
-                          ? 'bg-brand-600 text-white font-semibold shadow-sm'
-                          : 'text-indigo-200 hover:text-white hover:bg-brand-700'
+                          ? 'text-brand-600 font-semibold underline decoration-2 underline-offset-8'
+                          : 'text-surface-muted hover:text-brand-600 hover:bg-brand-50'
                       }`}
                     >
                       {link.name}
@@ -133,7 +133,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </main>
 
       {/* Pie de página accesible */}
-      <footer className="bg-white border-t border-slate-200 text-surface-muted text-center py-6 text-sm" role="contentinfo">
+      <footer className="bg-surface-card border-t border-surface-border text-surface-muted text-center py-6 text-sm" role="contentinfo">
         <div className="max-w-6xl mx-auto px-4 space-y-2">
           <nav aria-label="Enlaces del pie de página">
             <ul className="flex flex-wrap justify-center gap-4">
@@ -141,7 +141,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <li key={link.path}>
                   <Link
                     to={link.path}
-                    className="underline text-brand-700 hover:text-brand-900 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+                    className="inline-flex min-h-11 items-center px-2 underline text-brand-600 hover:text-brand-700 rounded-lg"
                   >
                     {link.name}
                   </Link>
@@ -150,7 +150,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </ul>
           </nav>
           <p>© 2026-I {APP_NAME} — Proyecto Integrador I (Grupo 3)</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-surface-muted">
             Diseñado bajo pautas de accesibilidad <strong>WCAG 2.2 Nivel AA</strong>
           </p>
         </div>
