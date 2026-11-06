@@ -42,6 +42,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { name: 'Mi Perfil', path: '/perfil' },
   ];
 
+  // Título distinto en cada pantalla (WCAG 2.4.2)
+  const paginaActual =
+    navLinks.find((link) => link.path === location.pathname)?.name ?? 'Página no encontrada';
+
+  React.useEffect(() => {
+    document.title = `${paginaActual} · Salón de Estudio Colaborativo`;
+  }, [paginaActual]);
+
   return (
     <div className="min-h-screen flex flex-col bg-surface-bg text-surface-text">
       {/* Enlace de salto accesible WCAG 2.4.1 */}
