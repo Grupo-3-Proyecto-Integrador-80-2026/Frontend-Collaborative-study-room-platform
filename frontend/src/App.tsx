@@ -1,7 +1,26 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
+
+const APP_NAME = 'Salón de Estudio Colaborativo';
+
+// Título de cada pantalla del mapa del sitio (WCAG 2.4.2)
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Inicio',
+  '/ingreso': 'Iniciar sesión',
+  '/registro': 'Crear cuenta',
+  '/registro/usuario': 'Elegir nombre de usuario',
+  '/panel': 'Panel',
+  '/perfil': 'Mi perfil',
+  '/ayuda': 'Ayuda',
+  '/accesibilidad': 'Declaración de accesibilidad',
+};
+
+const getPageTitle = (pathname: string): string => {
+  if (pathname.startsWith('/salas/')) return 'Sala';
+  return PAGE_TITLES[pathname] ?? 'Página no encontrada';
+};
 
 // Componente plantilla accesible para las páginas del mapa del sitio planificadas
 const MapSitePlaceholder: React.FC<{
@@ -30,25 +49,40 @@ const MapSitePlaceholder: React.FC<{
   </section>
 );
 
+const RoomPlaceholder: React.FC = () => {
+  const { id } = useParams();
+  return (
+    <MapSitePlaceholder
+      title="Sala"
+      description={`Sala con ID «${id ?? ''}»: chat con historial, cuadrícula de participantes, micrófono, cámara y compartir pantalla. Se habilita entre el Sprint 3 y el Sprint 5 (US-08 a US-14).`}
+      sprint="Sprint 3 a 5: Sala, chat, audio, video y pantalla"
+      icon="🚪"
+    />
+  );
+};
+
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
 
   const navLinks = [
     { name: 'Inicio', path: '/' },
-    { name: 'Iniciar Sesión', path: '/login' },
-    { name: 'Registro', path: '/registro' },
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Salas', path: '/salas' },
-    { name: 'Mi Perfil', path: '/perfil' },
+    { name: 'Iniciar sesión', path: '/ingreso' },
+    { name: 'Crear cuenta', path: '/registro' },
+    { name: 'Panel', path: '/panel' },
+    { name: 'Mi perfil', path: '/perfil' },
+    { name: 'Ayuda', path: '/ayuda' },
   ];
 
-  // Título distinto en cada pantalla (WCAG 2.4.2)
-  const paginaActual =
-    navLinks.find((link) => link.path === location.pathname)?.name ?? 'Página no encontrada';
+  const footerLinks = [
+    { name: 'Ayuda', path: '/ayuda' },
+    { name: 'Declaración de accesibilidad', path: '/accesibilidad' },
+  ];
+
+  const currentPage = getPageTitle(location.pathname);
 
   React.useEffect(() => {
-    document.title = `${paginaActual} · Salón de Estudio Colaborativo`;
-  }, [paginaActual]);
+    document.title = `${currentPage} · ${APP_NAME}`;
+  }, [currentPage]);
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-bg text-surface-text">
@@ -65,7 +99,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <Link to="/" className="flex items-center gap-3 text-white hover:text-indigo-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white rounded">
             <span className="text-2xl" aria-hidden="true">📖</span>
-            <span className="text-xl font-bold tracking-tight">Salón de Estudio Virtual</span>
+            <span className="text-xl font-bold tracking-tight">{APP_NAME}</span>
           </Link>
 
           <nav aria-label="Navegación principal">
@@ -100,8 +134,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Pie de página accesible */}
       <footer className="bg-white border-t border-slate-200 text-surface-muted text-center py-6 text-sm" role="contentinfo">
-        <div className="max-w-6xl mx-auto px-4 space-y-1">
-          <p>© 2026-I Salón de Estudio Colaborativo — Proyecto Integrador I (Grupo 3)</p>
+        <div className="max-w-6xl mx-auto px-4 space-y-2">
+          <nav aria-label="Enlaces del pie de página">
+            <ul className="flex flex-wrap justify-center gap-4">
+              {footerLinks.map((link) => (
+                <li key={link.path}>
+                  <Link
+                    to={link.path}
+                    className="underline text-brand-700 hover:text-brand-900 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <p>© 2026-I {APP_NAME} — Proyecto Integrador I (Grupo 3)</p>
           <p className="text-xs text-slate-500">
             Diseñado bajo pautas de accesibilidad <strong>WCAG 2.2 Nivel AA</strong>
           </p>
@@ -118,12 +166,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route
-            path="/login"
+            path="/ingreso"
             element={
               <MapSitePlaceholder
-                title="Iniciar Sesión"
-                description="Pantalla de autenticación mediante correo/contraseña y Google Sign-In. Habilitada en Sprint 1 (US-03)."
-                sprint="Sprint 1: Identidad y Autenticación"
+                title="Iniciar sesión"
+                description="Ingreso con correo y contraseña o con «Continuar con Google». Se habilita en el Sprint 1 (US-03)."
+                sprint="Sprint 1: Identidad y autenticación"
                 icon="🔐"
               />
             }
@@ -132,46 +180,73 @@ export default function App() {
             path="/registro"
             element={
               <MapSitePlaceholder
-                title="Registro de Usuario"
-                description="Formulario para la creación de cuenta con validación de username único y persistencia en Firestore. Habilitado en Sprint 1 (US-01 / US-02)."
-                sprint="Sprint 1: Identidad y Autenticación"
+                title="Crear cuenta"
+                description="Formulario para crear la cuenta con nombre de usuario único, avatar, correo y contraseña. Se habilita en el Sprint 1 (US-01)."
+                sprint="Sprint 1: Identidad y autenticación"
                 icon="📝"
               />
             }
           />
           <Route
-            path="/dashboard"
+            path="/registro/usuario"
             element={
               <MapSitePlaceholder
-                title="Panel Principal (Dashboard)"
-                description="Vista protegida con el listado de salas activas y accesos rápidos de estudio. Habilitado en Sprint 1 y 2 (US-06)."
-                sprint="Sprint 2: Gestión Base de Salas"
+                title="Elegir nombre de usuario"
+                description="Paso obligatorio después de «Continuar con Google» la primera vez. Se habilita en el Sprint 1 (US-02)."
+                sprint="Sprint 1: Identidad y autenticación"
+                icon="🪪"
+              />
+            }
+          />
+          <Route
+            path="/panel"
+            element={
+              <MapSitePlaceholder
+                title="Panel"
+                description="Lista de mis salas con su ID, «Crear sala» y «Unirse a una sala». Se habilita en el Sprint 2 (US-06) y el Sprint 3 (US-07 y US-08)."
+                sprint="Sprint 2: Salas"
                 icon="📊"
               />
             }
           />
-          <Route
-            path="/salas"
-            element={
-              <MapSitePlaceholder
-                title="Salas de Estudio"
-                description="Módulo para crear, unirse por código de invitación y gestionar salas colaborativas. Habilitado en Sprint 2 y 3 (US-06 / US-08)."
-                sprint="Sprint 2 y 3: Salas y Tiempo Real"
-                icon="🚪"
-              />
-            }
-          />
+          <Route path="/salas/:id" element={<RoomPlaceholder />} />
           <Route
             path="/perfil"
             element={
               <MapSitePlaceholder
-                title="Mi Perfil"
-                description="Gestión completa de datos de usuario, actualización de avatar y opción de eliminación de cuenta. Habilitado en Sprint 2 (US-04 / US-05)."
-                sprint="Sprint 2: Perfil Avanzado"
+                title="Mi perfil"
+                description="Ver y editar nombres, apellidos, avatar y nombre de usuario, y eliminar la cuenta. Se habilita en el Sprint 2 (US-04 y US-05)."
+                sprint="Sprint 2: Perfil"
                 icon="👤"
               />
             }
           />
+          <Route
+            path="/ayuda"
+            element={
+              <MapSitePlaceholder
+                title="Ayuda"
+                description="Preguntas frecuentes sobre crear y unirse a salas, permisos de cámara y micrófono, y uso con teclado y lector de pantalla."
+                sprint="Página de apoyo"
+                icon="❓"
+              />
+            }
+          />
+          <Route
+            path="/accesibilidad"
+            element={
+              <MapSitePlaceholder
+                title="Declaración de accesibilidad"
+                description="Nivel de conformidad WCAG 2.2 AA, cómo se comprobó, limitaciones conocidas y contacto. Se publica completa en el Sprint 6 (US-15)."
+                sprint="Página de apoyo"
+                icon="♿"
+              />
+            }
+          />
+          {/* Rutas anteriores, redirigidas a los nombres del glosario */}
+          <Route path="/login" element={<Navigate to="/ingreso" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/panel" replace />} />
+          <Route path="/salas" element={<Navigate to="/panel" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>

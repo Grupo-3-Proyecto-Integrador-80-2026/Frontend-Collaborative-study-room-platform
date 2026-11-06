@@ -17,7 +17,7 @@ export default function NotFound() {
           to="/"
           className="inline-flex items-center px-5 py-2.5 rounded-md bg-brand-600 text-white text-sm font-semibold shadow-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-600 transition"
         >
-          ← Volver a la página principal
+          ← Volver al inicio
         </Link>
       </div>
     </div>
