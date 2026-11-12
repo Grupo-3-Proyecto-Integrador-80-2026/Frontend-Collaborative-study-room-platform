@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
+import Register from './pages/Register';
+import { AuthProvider } from './context/AuthContext';
 
 const APP_NAME = 'Salón de Estudio Colaborativo';
 
@@ -162,94 +164,97 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 export default function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route
-            path="/ingreso"
-            element={
-              <MapSitePlaceholder
-                title="Iniciar sesión"
-                description="Ingreso con correo y contraseña o con «Continuar con Google». Se habilita en el Sprint 1 (US-03)."
-                sprint="Sprint 1: Identidad y autenticación"
-                icon="🔐"
-              />
-            }
-          />
-          <Route
-            path="/registro"
-            element={
-              <MapSitePlaceholder
-                title="Crear cuenta"
-                description="Formulario para crear la cuenta con nombre de usuario único, avatar, correo y contraseña. Se habilita en el Sprint 1 (US-01)."
-                sprint="Sprint 1: Identidad y autenticación"
-                icon="📝"
-              />
-            }
-          />
-          <Route
-            path="/registro/usuario"
-            element={
-              <MapSitePlaceholder
-                title="Elegir nombre de usuario"
-                description="Paso obligatorio después de «Continuar con Google» la primera vez. Se habilita en el Sprint 1 (US-02)."
-                sprint="Sprint 1: Identidad y autenticación"
-                icon="🪪"
-              />
-            }
-          />
-          <Route
-            path="/panel"
-            element={
-              <MapSitePlaceholder
-                title="Panel"
-                description="Lista de mis salas con su ID, «Crear sala» y «Unirse a una sala». Se habilita en el Sprint 2 (US-06) y el Sprint 3 (US-07 y US-08)."
-                sprint="Sprint 2: Salas"
-                icon="📊"
-              />
-            }
-          />
-          <Route path="/salas/:id" element={<RoomPlaceholder />} />
-          <Route
-            path="/perfil"
-            element={
-              <MapSitePlaceholder
-                title="Mi perfil"
-                description="Ver y editar nombres, apellidos, avatar y nombre de usuario, y eliminar la cuenta. Se habilita en el Sprint 2 (US-04 y US-05)."
-                sprint="Sprint 2: Perfil"
-                icon="👤"
-              />
-            }
-          />
-          <Route
-            path="/ayuda"
-            element={
-              <MapSitePlaceholder
-                title="Ayuda"
-                description="Preguntas frecuentes sobre crear y unirse a salas, permisos de cámara y micrófono, y uso con teclado y lector de pantalla."
-                sprint="Página de apoyo"
-                icon="❓"
-              />
-            }
-          />
-          <Route
-            path="/accesibilidad"
-            element={
-              <MapSitePlaceholder
-                title="Declaración de accesibilidad"
-                description="Nivel de conformidad WCAG 2.2 AA, cómo se comprobó, limitaciones conocidas y contacto. Se publica completa en el Sprint 6 (US-15)."
-                sprint="Página de apoyo"
-                icon="♿"
-              />
-            }
-          />
-          {/* Rutas anteriores, redirigidas a los nombres del glosario */}
-          <Route path="/login" element={<Navigate to="/ingreso" replace />} />
-          <Route path="/dashboard" element={<Navigate to="/panel" replace />} />
-          <Route path="/salas" element={<Navigate to="/panel" replace />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Layout>
+      <AuthProvider>
+        <Layout>
+          <Routes>
+            <Route path="/registro" element={<Register />} />
+            <Route path="/" element={<Home />} />
+            <Route
+              path="/ingreso"
+              element={
+                <MapSitePlaceholder
+                  title="Iniciar sesión"
+                  description="Ingreso con correo y contraseña o con «Continuar con Google». Se habilita en el Sprint 1 (US-03)."
+                  sprint="Sprint 1: Identidad y autenticación"
+                  icon="🔐"
+                />
+              }
+            />
+            <Route
+              path="/registro"
+              element={
+                <MapSitePlaceholder
+                  title="Crear cuenta"
+                  description="Formulario para crear la cuenta con nombre de usuario único, avatar, correo y contraseña. Se habilita en el Sprint 1 (US-01)."
+                  sprint="Sprint 1: Identidad y autenticación"
+                  icon="📝"
+                />
+              }
+            />
+            <Route
+              path="/registro/usuario"
+              element={
+                <MapSitePlaceholder
+                  title="Elegir nombre de usuario"
+                  description="Paso obligatorio después de «Continuar con Google» la primera vez. Se habilita en el Sprint 1 (US-02)."
+                  sprint="Sprint 1: Identidad y autenticación"
+                  icon="🪪"
+                />
+              }
+            />
+            <Route
+              path="/panel"
+              element={
+                <MapSitePlaceholder
+                  title="Panel"
+                  description="Lista de mis salas con su ID, «Crear sala» y «Unirse a una sala». Se habilita en el Sprint 2 (US-06) y el Sprint 3 (US-07 y US-08)."
+                  sprint="Sprint 2: Salas"
+                  icon="📊"
+                />
+              }
+            />
+            <Route path="/salas/:id" element={<RoomPlaceholder />} />
+            <Route
+              path="/perfil"
+              element={
+                <MapSitePlaceholder
+                  title="Mi perfil"
+                  description="Ver y editar nombres, apellidos, avatar y nombre de usuario, y eliminar la cuenta. Se habilita en el Sprint 2 (US-04 y US-05)."
+                  sprint="Sprint 2: Perfil"
+                  icon="👤"
+                />
+              }
+            />
+            <Route
+              path="/ayuda"
+              element={
+                <MapSitePlaceholder
+                  title="Ayuda"
+                  description="Preguntas frecuentes sobre crear y unirse a salas, permisos de cámara y micrófono, y uso con teclado y lector de pantalla."
+                  sprint="Página de apoyo"
+                  icon="❓"
+                />
+              }
+            />
+            <Route
+              path="/accesibilidad"
+              element={
+                <MapSitePlaceholder
+                  title="Declaración de accesibilidad"
+                  description="Nivel de conformidad WCAG 2.2 AA, cómo se comprobó, limitaciones conocidas y contacto. Se publica completa en el Sprint 6 (US-15)."
+                  sprint="Página de apoyo"
+                  icon="♿"
+                />
+              }
+            />
+            {/* Rutas anteriores, redirigidas a los nombres del glosario */}
+            <Route path="/login" element={<Navigate to="/ingreso" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/panel" replace />} />
+            <Route path="/salas" element={<Navigate to="/panel" replace />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
