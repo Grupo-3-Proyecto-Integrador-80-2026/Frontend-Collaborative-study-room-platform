@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, deleteUser } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,7 +15,7 @@ export default function Login() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Ruta a la que intentaba acceder el usuario
+  // Ruta a la que intentaba acceder el usuario antes de ser interceptado
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/panel';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,17 +23,17 @@ export default function Login() {
     setErrorMessage(null);
 
     if (!email.trim() || !password) {
-      setErrorMessage('Ingresa tu correo y contraseña.');
+      setErrorMessage('Ingresa tu correo institucional y contraseña.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       await refreshProfile();
       navigate(from, { replace: true });
     } catch {
-      // US-03 Escenario Credenciales incorrectas: mensaje genérico sin revelar cuál falló
+      // US-03 DoD: Mensaje genérico sin revelar si falló el correo o la clave
       setErrorMessage('Correo o contraseña incorrectos');
     } finally {
       setIsSubmitting(false);
@@ -44,7 +44,19 @@ export default function Login() {
     setErrorMessage(null);
     setIsSubmitting(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const userEmail = (result.user.email || '').toLowerCase();
+
+      // Validación estricta de correo institucional
+      if (!userEmail.endsWith('.edu.co')) {
+        // Borramos el usuario de Firebase Authentication para no dejar rastro
+        await deleteUser(result.user);
+        setErrorMessage(
+          `Acceso denegado: La cuenta (${userEmail}) no es institucional. Solo se permiten correos terminados en .edu.co (ej. @correounivalle.edu.co).`
+        );
+        return;
+      }
+
       await refreshProfile();
       navigate(from, { replace: true });
     } catch (err: unknown) {
@@ -72,9 +84,9 @@ export default function Login() {
         {errorMessage && (
           <div
             role="alert"
-            className="mb-4 p-3 bg-red-50 border border-red-700 text-red-900 rounded-lg text-sm flex items-center gap-2"
+            className="mb-4 p-3 bg-red-50 border border-red-700 text-red-900 rounded-lg text-sm flex items-start gap-2"
           >
-            <span aria-hidden="true">⚠️</span>
+            <span aria-hidden="true" className="text-lg">⚠️</span>
             <span>{errorMessage}</span>
           </div>
         )}
@@ -90,6 +102,7 @@ export default function Login() {
               autoComplete="username"
               required
               aria-required="true"
+              placeholder="nombre.apellido@correounivalle.edu.co"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
@@ -140,6 +153,7 @@ export default function Login() {
           </span>
         </div>
 
+        {/* Botón Google */}
         <button
           type="button"
           onClick={handleGoogleLogin}
@@ -166,6 +180,11 @@ export default function Login() {
           </svg>
           <span>Continuar con Google</span>
         </button>
+
+        {/* Mensaje de advertencia institucional */}
+        <p className="mt-2 text-xs text-center text-surface-muted bg-brand-50 border border-brand-100 p-2 rounded-lg">
+          🔒 <strong>Nota:</strong> Solo se permite el acceso con cuentas terminadas en <strong>.edu.co</strong>. Las cuentas personales de Gmail serán rechazadas.
+        </p>
 
         <p className="mt-6 text-center text-sm text-surface-muted">
           ¿No tienes una cuenta aún?{' '}

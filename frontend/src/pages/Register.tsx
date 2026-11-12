@@ -1,7 +1,6 @@
-// frontend/src/pages/Register.tsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, deleteUser } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { authApi, ApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -137,21 +136,30 @@ export default function Register() {
       setIsSubmitting(false);
     }
   };
-
-  const handleGoogleSignup = async () => {
+  
+const handleGoogleSignup = async () => {
     setGeneralError(null);
     setIsSubmitting(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const email = (result.user.email || '').toLowerCase();
+
+      if (!email.endsWith('.edu.co')) {
+        await deleteUser(result.user);
+        setGeneralError(
+          `Acceso denegado: La cuenta (${email}) no es institucional. Solo se permiten correos terminados en .edu.co (ej. @correounivalle.edu.co).`
+        );
+        return;
+      }
+
       await refreshProfile();
-      // El ProtectedRoute o AuthContext redirigirá a /registro/usuario o /panel
       navigate('/panel');
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       if (code === 'auth/popup-closed-by-user') {
         setGeneralError('Se cerró la ventana de autenticación con Google.');
       } else {
-        setGeneralError('No fue posible conectar con Google. Intenta nuevamente.');
+        setGeneralError('No fue posible conectar con Google o la cuenta fue rechazada.');
       }
     } finally {
       setIsSubmitting(false);
@@ -425,6 +433,11 @@ export default function Register() {
           </svg>
           <span>Continuar con Google</span>
         </button>
+
+        {/* Mensaje de advertencia institucional visible */}
+        <p className="mt-2 text-xs text-center text-surface-muted bg-brand-50 border border-brand-100 p-2 rounded-lg">
+          🔒 <strong>Nota:</strong> Solo se permite el acceso con cuentas terminadas en <strong>.edu.co</strong>. Las cuentas personales de Gmail serán rechazadas.
+        </p>
 
         <p className="mt-6 text-center text-sm text-surface-muted">
           ¿Ya tienes una cuenta?{' '}
