@@ -13,10 +13,12 @@ const AVATAR_PRESETS = [
   'https://api.dicebear.com/9.x/bottts/svg?seed=Leo',
 ];
 
-// Validador de correo institucional
+// Validador de correo institucional: exige sintaxis válida y dominio .edu.co
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 const isInstitutionalEmail = (email: string): boolean => {
   const lower = email.trim().toLowerCase();
-  return lower.endsWith('@correounivalle.edu.co') || lower.endsWith('.edu.co');
+  return EMAIL_PATTERN.test(lower) && lower.endsWith('.edu.co');
 };
 
 export default function Register() {
