@@ -80,8 +80,9 @@ export default function Register() {
         setFieldErrors((prev) => ({ ...prev, username: 'Ese nombre de usuario ya está en uso. Prueba con otro.' }));
       } else {
         setFieldErrors((prev) => {
-          const { username, ...rest } = prev;
-          return rest;
+          const next = { ...prev };
+          delete next.username;
+          return next;
         });
         setUsernameNotice('✓ Nombre de usuario disponible.');
       }
