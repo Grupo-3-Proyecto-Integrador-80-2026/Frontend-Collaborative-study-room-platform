@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Link, Navigate, useLocation, useParams } 
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
 import Register from './pages/Register';
+import ChooseUsername from './pages/ChooseUsername';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 
 const APP_NAME = 'Salón de Estudio Colaborativo';
@@ -168,6 +170,14 @@ export default function App() {
         <Layout>
           <Routes>
             <Route path="/registro" element={<Register />} />
+            <Route
+              path="/registro/usuario"
+              element={
+                <ProtectedRoute>
+                  <ChooseUsername />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/" element={<Home />} />
             <Route
               path="/ingreso"
@@ -181,36 +191,16 @@ export default function App() {
               }
             />
             <Route
-              path="/registro"
-              element={
-                <MapSitePlaceholder
-                  title="Crear cuenta"
-                  description="Formulario para crear la cuenta con nombre de usuario único, avatar, correo y contraseña. Se habilita en el Sprint 1 (US-01)."
-                  sprint="Sprint 1: Identidad y autenticación"
-                  icon="📝"
-                />
-              }
-            />
-            <Route
-              path="/registro/usuario"
-              element={
-                <MapSitePlaceholder
-                  title="Elegir nombre de usuario"
-                  description="Paso obligatorio después de «Continuar con Google» la primera vez. Se habilita en el Sprint 1 (US-02)."
-                  sprint="Sprint 1: Identidad y autenticación"
-                  icon="🪪"
-                />
-              }
-            />
-            <Route
               path="/panel"
               element={
+                <ProtectedRoute>
                 <MapSitePlaceholder
                   title="Panel"
                   description="Lista de mis salas con su ID, «Crear sala» y «Unirse a una sala». Se habilita en el Sprint 2 (US-06) y el Sprint 3 (US-07 y US-08)."
                   sprint="Sprint 2: Salas"
                   icon="📊"
                 />
+                </ProtectedRoute>
               }
             />
             <Route path="/salas/:id" element={<RoomPlaceholder />} />
