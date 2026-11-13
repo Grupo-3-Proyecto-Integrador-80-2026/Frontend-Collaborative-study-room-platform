@@ -12,6 +12,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -21,9 +22,13 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setFieldErrors({});
 
-    if (!email.trim() || !password) {
-      setErrorMessage('Ingresa tu correo institucional y contraseña.');
+    const errors: { email?: string; password?: string } = {};
+    if (!email.trim()) errors.email = 'Escribe tu correo institucional.';
+    if (!password) errors.password = 'Escribe tu contraseña.';
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -97,28 +102,39 @@ export default function Login() {
             </label>
             <input
               id="login-email"
+              name="email"
               type="email"
               autoComplete="username"
               required
               aria-required="true"
+              aria-invalid={!!fieldErrors.email}
+              aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
               placeholder="nombre.apellido@correounivalle.edu.co"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
             />
+            {fieldErrors.email && (
+              <p id="login-email-error" role="alert" className="mt-1 text-xs text-red-700 font-medium">
+                {fieldErrors.email}
+              </p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="login-password" aria-label="Contraseña" className="block text-sm font-semibold text-surface-text mb-1">
+            <label htmlFor="login-password" className="block text-sm font-semibold text-surface-text mb-1">
               Contraseña <span className="text-red-700" aria-hidden="true">*</span>
             </label>
             <div className="relative">
               <input
                 id="login-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 required
                 aria-required="true"
+                aria-invalid={!!fieldErrors.password}
+                aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full min-h-11 pl-3 pr-24 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
@@ -128,10 +144,16 @@ export default function Login() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 min-h-9 px-2 text-xs font-semibold text-brand-600 hover:text-brand-700 rounded"
                 aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                aria-pressed={showPassword}
               >
                 {showPassword ? 'Ocultar' : 'Mostrar'}
               </button>
             </div>
+            {fieldErrors.password && (
+              <p id="login-password-error" role="alert" className="mt-1 text-xs text-red-700 font-medium">
+                {fieldErrors.password}
+              </p>
+            )}
           </div>
 
           <button
