@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, deleteUser } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -49,8 +49,7 @@ export default function Login() {
 
       // Validación estricta de correo institucional
       if (!userEmail.endsWith('.edu.co')) {
-        // Borramos el usuario de Firebase Authentication para no dejar rastro
-        await deleteUser(result.user);
+        await signOut(auth);
         setErrorMessage(
           `Acceso denegado: La cuenta (${userEmail}) no es institucional. Solo se permiten correos terminados en .edu.co (ej. @correounivalle.edu.co).`
         );
