@@ -88,6 +88,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    // US-03 E4: al volver con el botón atrás, el navegador puede restaurar esta
+    // página desde su caché (bfcache) con el estado de una sesión ya cerrada,
+    // lo que dejaría datos privados a la vista. Se recarga para volver a leer
+    // la sesión real de Firebase y proteger las rutas privadas.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
