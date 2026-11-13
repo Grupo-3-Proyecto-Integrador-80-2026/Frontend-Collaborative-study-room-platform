@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, deleteUser } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { authApi, ApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -148,7 +148,7 @@ const handleGoogleSignup = async () => {
       const email = (result.user.email || '').toLowerCase();
 
       if (!email.endsWith('.edu.co')) {
-        await deleteUser(result.user);
+        await signOut(auth);
         setGeneralError(
           `Acceso denegado: La cuenta (${email}) no es institucional. Solo se permiten correos terminados en .edu.co (ej. @correounivalle.edu.co).`
         );

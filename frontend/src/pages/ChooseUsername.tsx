@@ -10,23 +10,29 @@ export default function ChooseUsername() {
   // Si Google solo entregó un nombre, preparamos el campo de apellidos
   const nameParts = (firebaseUser?.displayName || '').trim().split(/\s+/).filter(Boolean);
   const hasLastName = nameParts.length >= 2;
+  const hasFirstName = nameParts.length > 0;
 
   const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  React.useEffect(() => {
-    const email = firebaseUser?.email?.toLowerCase() || '';
-    if (firebaseUser && !email.endsWith('.edu.co')) {
-      logout();
-      navigate('/registro', { replace: true });
-    }
-  }, [firebaseUser, logout, navigate]);
+  const usernameRef = React.useRef<HTMLInputElement>(null);
+  const firstNameRef = React.useRef<HTMLInputElement>(null);
+  const lastNameRef = React.useRef<HTMLInputElement>(null);
+
+  const showFieldErrors = (errors: Record<string, string>) => {
+    setFieldErrors(errors);
+    if (errors.username) usernameRef.current?.focus();
+    else if (errors.firstName) firstNameRef.current?.focus();
+    else if (errors.lastName) lastNameRef.current?.focus();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setGeneralError(null);
     setFieldErrors({});
 
@@ -42,9 +48,12 @@ export default function ChooseUsername() {
     if (!hasLastName && !lastName.trim()) {
       errors.lastName = 'Escribe tus apellidos.';
     }
+    if (!hasFirstName && !firstName.trim()) {
+      errors.firstName = 'Escribe tus nombres.';
+    }
 
     if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
+      showFieldErrors(errors);
       return;
     }
 
@@ -52,6 +61,7 @@ export default function ChooseUsername() {
     try {
       await authApi.completeProfile({
         username: cleanUser,
+        ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
         ...(lastName.trim() ? { lastName: lastName.trim() } : {}),
       });
 
@@ -64,7 +74,7 @@ export default function ChooseUsername() {
           err.errors.forEach((item) => {
             map[item.field] = item.message;
           });
-          setFieldErrors(map);
+          showFieldErrors(map);
         }
         setGeneralError(err.message);
       } else {
@@ -81,7 +91,7 @@ export default function ChooseUsername() {
         <div className="text-center mb-6">
           <span className="text-4xl" aria-hidden="true">🪪</span>
           <h1 className="text-2xl font-bold text-surface-text mt-2">Completa tu perfil</h1>
-          <p className="text-sm text-surface-muted mt-1">
+          <p className="text-sm text-surface-muted mt-1 break-words">
             Hola, <strong>{firebaseUser?.displayName || 'Estudiante'}</strong> ({firebaseUser?.email}). Elige tu nombre de usuario para terminar de configurar tu cuenta.
           </p>
         </div>
@@ -93,32 +103,56 @@ export default function ChooseUsername() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <p role="status" className="sr-only">{isSubmitting ? 'Guardando tu perfil...' : ''}</p>
+        <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-semibold text-surface-text mb-1">
               Nombre de usuario <span className="text-red-700" aria-hidden="true">*</span>
             </label>
             <input
               id="username"
+              ref={usernameRef}
               type="text"
+              autoComplete="username"
               required
               aria-required="true"
               aria-invalid={!!fieldErrors.username}
-              aria-describedby={fieldErrors.username ? 'username-error' : undefined}
+              aria-describedby={`username-help${fieldErrors.username ? ' username-error' : ''}`}
               placeholder="ejemplo_2026"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
             />
             {fieldErrors.username && (
               <p id="username-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
                 {fieldErrors.username}
               </p>
             )}
-            <p className="mt-1 text-xs text-surface-muted">
+            <p id="username-help" className="mt-1 text-xs text-surface-muted">
               De 3 a 20 caracteres: letras sin tilde, números y guiones bajos (_).
             </p>
           </div>
+
+          {!hasFirstName && (
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-semibold text-surface-text mb-1">
+                Tus nombres <span className="text-red-700" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="firstName"
+                ref={firstNameRef}
+                type="text"
+                autoComplete="given-name"
+                required
+                aria-invalid={!!fieldErrors.firstName}
+                aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
+              />
+              {fieldErrors.firstName && <p id="firstName-error" role="alert" className="mt-1 text-xs text-red-700 font-medium">{fieldErrors.firstName}</p>}
+            </div>
+          )}
 
           {/* Si Google no tiene apellidos registrados, se solicita aquí */}
           {!hasLastName && (
@@ -128,7 +162,9 @@ export default function ChooseUsername() {
               </label>
               <input
                 id="lastName"
+                ref={lastNameRef}
                 type="text"
+                autoComplete="family-name"
                 required
                 aria-required="true"
                 aria-invalid={!!fieldErrors.lastName}
@@ -136,7 +172,7 @@ export default function ChooseUsername() {
                 placeholder="Ingresa tus apellidos"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
               />
               {fieldErrors.lastName && (
                 <p id="lastName-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
@@ -157,8 +193,9 @@ export default function ChooseUsername() {
           <div className="pt-2 text-center">
             <button
               type="button"
-              onClick={logout}
-              className="text-xs text-red-700 hover:underline"
+              disabled={isSubmitting}
+              onClick={() => void logout().catch(() => setGeneralError('No pudimos cerrar la sesión. Intenta de nuevo.'))}
+              className="min-h-11 px-2 rounded text-xs text-red-700 hover:underline"
             >
               Cancelar y salir de esta cuenta
             </button>

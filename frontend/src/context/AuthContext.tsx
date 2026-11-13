@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { type User, onAuthStateChanged, signOut as fbSignOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { authApi, type UserProfile, ApiError } from '../services/api';
@@ -8,6 +8,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   needsUsername: boolean;
+  profileError: string | null;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -19,45 +20,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [needsUsername, setNeedsUsername] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileRequest = useRef(0);
 
   const fetchProfile = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const request = ++profileRequest.current;
+    const isCurrent = () => request === profileRequest.current && auth.currentUser?.uid === user.uid;
+    setLoading(true);
+    setProfileError(null);
     try {
       const res = await authApi.getMyProfile();
+      if (!isCurrent()) return;
       setProfile(res.user);
-      setNeedsUsername(false);
+      setNeedsUsername(!res.user.username?.trim());
     } catch (err) {
+      if (!isCurrent()) return;
+      setProfile(null);
       if (err instanceof ApiError && err.code === 'PROFILE_NOT_FOUND') {
         // Usuario logueado con Google pero sin perfil completado en Firestore
-        setProfile(null);
         setNeedsUsername(true);
       } else {
-        console.error('Error al sincronizar perfil de usuario:', err);
-        setProfile(null);
+        setNeedsUsername(false);
+        setProfileError('No pudimos verificar tu perfil. Reintenta para continuar.');
+        throw err;
       }
+    } finally {
+      if (isCurrent()) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      if (user) {
-        await fetchProfile();
+      ++profileRequest.current;
+      setProfile(null);
+      setNeedsUsername(false);
+      setProfileError(null);
+      // El handler de Google informa el rechazo y cierra la sesión. No redirigir
+      // antes de que pueda mostrar ese mensaje ni consultar un perfil no admitido.
+      const acceptedUser = user?.email?.toLowerCase().endsWith('.edu.co') ? user : null;
+      setFirebaseUser(acceptedUser);
+      if (acceptedUser) {
+        try {
+          await fetchProfile();
+        } catch {
+          // El error recuperable se presenta en los guards; nunca se abre el panel.
+        }
       } else {
-        setProfile(null);
-        setNeedsUsername(false);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      ++profileRequest.current;
+      unsubscribe();
+    };
   }, [fetchProfile]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await fbSignOut(auth);
+    ++profileRequest.current;
     setFirebaseUser(null);
     setProfile(null);
     setNeedsUsername(false);
-  };
+    setProfileError(null);
+    setLoading(false);
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -66,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile,
         loading,
         needsUsername,
+        profileError,
         refreshProfile: fetchProfile,
         logout,
       }}

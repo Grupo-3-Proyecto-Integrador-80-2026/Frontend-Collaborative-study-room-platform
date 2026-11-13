@@ -9,7 +9,7 @@ import { ApiError, authApi } from '../src/services/api';
 const mocks = vi.hoisted(() => ({ signIn: vi.fn(), refreshProfile: vi.fn() }));
 vi.mock('../src/config/firebase', () => ({ auth: {}, googleProvider: {} }));
 vi.mock('firebase/auth', () => ({
-  signInWithEmailAndPassword: mocks.signIn, signInWithPopup: vi.fn(), deleteUser: vi.fn(),
+  signInWithEmailAndPassword: mocks.signIn, signInWithPopup: vi.fn(), signOut: vi.fn(),
 }));
 vi.mock('../src/context/AuthContext', () => ({
   useAuth: () => ({ refreshProfile: mocks.refreshProfile }),

@@ -2,8 +2,25 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+const ProfileError = () => {
+  const { profileError, refreshProfile, logout } = useAuth();
+  const [logoutError, setLogoutError] = React.useState(false);
+  return (
+    <section className="max-w-md mx-auto space-y-4 py-10" aria-label="Verificación de perfil">
+      <p role="alert">{profileError || 'No pudimos verificar tu perfil.'}</p>
+      <button className="min-h-11 px-4 rounded-lg bg-brand-600 text-white" onClick={() => void refreshProfile().catch(() => undefined)}>
+        Reintentar
+      </button>
+      <button className="min-h-11 px-4 rounded-lg text-red-700" onClick={() => void logout().catch(() => setLogoutError(true))}>
+        Cerrar sesión
+      </button>
+      {logoutError && <p role="alert">No pudimos cerrar la sesión. Intenta de nuevo.</p>}
+    </section>
+  );
+};
+
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { firebaseUser, loading, needsUsername } = useAuth();
+  const { firebaseUser, profile, loading, needsUsername, profileError } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -23,20 +40,27 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     return <Navigate to="/ingreso" state={{ from: location }} replace />;
   }
 
+  if (profileError || (!profile && !needsUsername)) return <ProfileError />;
+
   // 2. Si entró con Google y no ha completado el username (US-02) -> Obligatorio a /registro/usuario
   if (needsUsername && location.pathname !== '/registro/usuario') {
     return <Navigate to="/registro/usuario" replace />;
+  }
+
+  if (!needsUsername && location.pathname === '/registro/usuario') {
+    return <Navigate to="/panel" replace />;
   }
 
   return <>{children}</>;
 };
 
 export const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { firebaseUser, loading, needsUsername } = useAuth();
+  const { firebaseUser, profile, loading, needsUsername, profileError } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <p role="status">Verificando sesión...</p>;
 
   if (firebaseUser) {
+    if (profileError || (!profile && !needsUsername)) return <ProfileError />;
     if (needsUsername) {
       return <Navigate to="/registro/usuario" replace />;
     }
