@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { type User, onAuthStateChanged, signOut as fbSignOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { authApi, type UserProfile, ApiError } from '../services/api';
+import { reloadPage } from '../utils/navigation';
 
 interface AuthContextType {
   firebaseUser: User | null;
@@ -95,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // la sesión real de Firebase y proteger las rutas privadas.
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        window.location.reload();
+        reloadPage();
       }
     };
     window.addEventListener('pageshow', handlePageShow);
