@@ -27,12 +27,26 @@ const PAGE_TITLES: Record<string, string> = {
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { firebaseUser, profile, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [logoutError, setLogoutError] = React.useState(false);
 
   const currentPage = PAGE_TITLES[location.pathname] || 'Página no encontrada';
 
   React.useEffect(() => {
     document.title = `${currentPage} · ${APP_NAME}`;
   }, [currentPage]);
+
+  const handleLogout = async () => {
+    setLogoutError(false);
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      setLogoutError(true);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-bg text-surface-text">
@@ -83,11 +97,18 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       {profile?.username ? `@${profile.username}` : firebaseUser.email}
                     </span>
                     <button
-                      onClick={logout}
-                      className="inline-flex min-h-11 items-center px-3 rounded-lg text-red-700 hover:bg-red-50 text-sm font-medium transition"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                      aria-busy={isLoggingOut}
+                      className="inline-flex min-h-11 items-center px-3 rounded-lg text-red-700 hover:bg-red-50 text-sm font-medium transition disabled:opacity-60"
                     >
-                      Cerrar sesión
+                      {isLoggingOut ? 'Cerrando...' : 'Cerrar sesión'}
                     </button>
+                    {logoutError && (
+                      <p role="alert" className="text-xs text-red-700 font-medium">
+                        No pudimos cerrar la sesión. Intenta de nuevo.
+                      </p>
+                    )}
                   </li>
                 </>
               ) : (

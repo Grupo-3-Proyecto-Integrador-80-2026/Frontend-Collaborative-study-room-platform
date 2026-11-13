@@ -1,7 +1,22 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const { profile, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
+
+  const handleLogout = async () => {
+    setLogoutError(false);
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      setLogoutError(true);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <section aria-labelledby="dashboard-title" className="space-y-6">
@@ -33,12 +48,19 @@ export default function Dashboard() {
         </div>
 
         <button
-          onClick={logout}
+          onClick={handleLogout}
           type="button"
-          className="min-h-11 px-4 py-2 bg-surface-card hover:bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-semibold transition"
+          disabled={isLoggingOut}
+          aria-busy={isLoggingOut}
+          className="min-h-11 px-4 py-2 bg-surface-card hover:bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-semibold transition disabled:opacity-60"
         >
-          🚪 Cerrar sesión
+          {isLoggingOut ? '⏳ Cerrando...' : '🚪 Cerrar sesión'}
         </button>
+        {logoutError && (
+          <p role="alert" className="text-xs text-red-700 font-medium">
+            No pudimos cerrar la sesión. Intenta de nuevo.
+          </p>
+        )}
       </div>
 
       {/* Estado vacío de salas (Sprint 1 DoD) */}
