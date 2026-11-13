@@ -56,6 +56,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
 export const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { firebaseUser, profile, loading, needsUsername, profileError } = useAuth();
+  const location = useLocation();
 
   if (loading) return <p role="status">Verificando sesión...</p>;
 
@@ -64,7 +65,10 @@ export const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ child
     if (needsUsername) {
       return <Navigate to="/registro/usuario" replace />;
     }
-    return <Navigate to="/panel" replace />;
+    // US-03 E5: al volver de la redirección del guardia, respeta la ruta que el
+    // usuario pidió originalmente en lugar de llevarlo siempre al panel.
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/panel';
+    return <Navigate to={from} replace />;
   }
 
   return <>{children}</>;
