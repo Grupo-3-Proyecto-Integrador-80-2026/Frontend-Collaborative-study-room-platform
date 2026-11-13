@@ -13,10 +13,12 @@ const AVATAR_PRESETS = [
   'https://api.dicebear.com/9.x/bottts/svg?seed=Leo',
 ];
 
-// Validador de correo institucional
+// Validador de correo institucional: exige sintaxis válida y dominio .edu.co
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 const isInstitutionalEmail = (email: string): boolean => {
   const lower = email.trim().toLowerCase();
-  return lower.endsWith('@correounivalle.edu.co') || lower.endsWith('.edu.co');
+  return EMAIL_PATTERN.test(lower) && lower.endsWith('.edu.co');
 };
 
 export default function Register() {
@@ -80,8 +82,9 @@ export default function Register() {
         setFieldErrors((prev) => ({ ...prev, username: 'Ese nombre de usuario ya está en uso. Prueba con otro.' }));
       } else {
         setFieldErrors((prev) => {
-          const { username, ...rest } = prev;
-          return rest;
+          const next = { ...prev };
+          delete next.username;
+          return next;
         });
         setUsernameNotice('✓ Nombre de usuario disponible.');
       }
@@ -204,7 +207,7 @@ const handleGoogleSignup = async () => {
                 aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined}
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
               />
               {fieldErrors.firstName && (
                 <p id="firstName-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
@@ -228,7 +231,7 @@ const handleGoogleSignup = async () => {
                 aria-describedby={fieldErrors.lastName ? 'lastName-error' : undefined}
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
               />
               {fieldErrors.lastName && (
                 <p id="lastName-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
@@ -264,7 +267,7 @@ const handleGoogleSignup = async () => {
                 setUsernameNotice(null);
                 setFormData({ ...formData, username: e.target.value.toLowerCase() });
               }}
-              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
             />
             <p id="username-hint" className="mt-1 text-xs text-surface-muted">
               De 3 a 20 caracteres: letras sin tilde, números y guion bajo.
@@ -301,7 +304,7 @@ const handleGoogleSignup = async () => {
               aria-describedby={fieldErrors.email ? 'email-error' : 'email-hint'}
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
             />
             <p id="email-hint" className="mt-1 text-xs text-surface-muted">
               Solo se permiten cuentas institucionales universitarias (@correounivalle.edu.co o .edu.co).
@@ -315,7 +318,7 @@ const handleGoogleSignup = async () => {
 
           {/* Contraseña */}
           <div>
-            <label htmlFor="password" aria-label="Contraseña" className="block text-sm font-semibold text-surface-text mb-1">
+            <label htmlFor="password" className="block text-sm font-semibold text-surface-text mb-1">
               Contraseña <span className="text-red-700" aria-hidden="true">*</span>
             </label>
             <div className="relative">
@@ -330,13 +333,14 @@ const handleGoogleSignup = async () => {
                 aria-describedby={fieldErrors.password ? 'password-error' : 'password-hint'}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full min-h-11 pl-3 pr-24 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+                className="w-full min-h-11 pl-3 pr-24 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 min-h-9 px-2 text-xs font-semibold text-brand-600 hover:text-brand-700 rounded"
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-pressed={showPassword}
               >
                 {showPassword ? 'Ocultar' : 'Mostrar'}
               </button>
@@ -362,7 +366,7 @@ const handleGoogleSignup = async () => {
                 return (
                   <label
                     key={url}
-                    className={`cursor-pointer p-1 rounded-full border-2 transition ${
+                    className={`cursor-pointer p-1 rounded-full border-2 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-600 has-[:focus-visible]:ring-offset-2 ${
                       isSelected ? 'border-brand-600 ring-2 ring-brand-100' : 'border-transparent hover:border-surface-border'
                     }`}
                   >
