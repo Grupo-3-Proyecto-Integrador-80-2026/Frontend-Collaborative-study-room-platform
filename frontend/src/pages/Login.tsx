@@ -122,7 +122,7 @@ export default function Login() {
               placeholder="nombre.apellido@correounivalle.edu.co"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
             />
             {fieldErrors.email && (
               <p id="login-email-error" role="alert" className="mt-1 text-xs text-red-700 font-medium">
@@ -147,7 +147,7 @@ export default function Login() {
                 aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full min-h-11 pl-3 pr-24 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text focus-visible:outline-none focus-visible:ring-0"
+                className="w-full min-h-11 pl-3 pr-24 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
               />
               <button
                 type="button"
