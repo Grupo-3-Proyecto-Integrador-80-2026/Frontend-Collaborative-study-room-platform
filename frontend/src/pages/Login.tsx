@@ -32,9 +32,19 @@ export default function Login() {
       return;
     }
 
+    // US-03: solo se permite el acceso con cuentas institucionales (.edu.co).
+    // Se rechaza el dominio antes de autenticar para no dejar una sesión fantasma.
+    const emailLower = email.trim().toLowerCase();
+    if (!emailLower.endsWith('.edu.co')) {
+      setFieldErrors({
+        email: 'Acceso denegado: usa tu correo institucional terminado en .edu.co (ej. @correounivalle.edu.co).',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      await signInWithEmailAndPassword(auth, emailLower, password);
       await refreshProfile();
       navigate(from, { replace: true });
     } catch {
