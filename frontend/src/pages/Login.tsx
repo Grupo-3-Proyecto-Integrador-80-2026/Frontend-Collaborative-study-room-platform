@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
+import { clearFlashNotice, peekFlashNotice } from '../utils/flashNotice';
+import { Alert } from '../components/ui/Alert';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,6 +17,12 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Aviso que deja otra pantalla antes de cerrar la sesión (US-05: cuenta eliminada).
+  const [notice, setNotice] = useState<string | null>(peekFlashNotice);
+
+  useEffect(() => {
+    clearFlashNotice();
+  }, []);
 
   // Ruta a la que intentaba acceder el usuario antes de ser interceptado
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/panel';
@@ -94,6 +102,14 @@ export default function Login() {
             Ingresa para acceder a tus salas de estudio colaborativo.
           </p>
         </header>
+
+        <div aria-live="polite" aria-atomic="true">
+          {notice && (
+            <Alert tone="success" onDismiss={() => setNotice(null)} dismissLabel="Cerrar aviso" className="mb-4">
+              {notice}
+            </Alert>
+          )}
+        </div>
 
         {errorMessage && (
           <div
