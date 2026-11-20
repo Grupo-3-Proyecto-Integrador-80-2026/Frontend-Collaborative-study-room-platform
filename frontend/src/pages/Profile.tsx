@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Camera, Check, Edit3, LogOut, Mail, User } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Camera, Check, Edit3, LogOut, Mail, Trash2, User } from 'lucide-react';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { ApiError, authApi, profileApi, type ProfileUpdate, type UserProfile } from '../services/api';
@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { TextField } from '../components/ui/TextField';
 import { ErrorBanner, LoadingBanner } from '../components/ui/StatusBanner';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
 
 type LoadState = 'loading' | 'ready' | 'error';
 const FIELD_ORDER: Array<keyof ProfileForm> = ['firstName', 'lastName', 'username', 'email'];
@@ -24,6 +25,7 @@ const toForm = (p: UserProfile): ProfileForm => ({
 
 export default function Profile() {
   const { profile: cachedProfile, replaceProfile, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [profile, setProfile] = useState<UserProfile | null>(cachedProfile);
@@ -36,6 +38,7 @@ export default function Profile() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -222,6 +225,13 @@ export default function Profile() {
     } finally {
       setIsLoggingOut(false);
     }
+  };
+
+  // US-05 E1: tras el 204 se cierra la sesión y se lleva al login con la confirmación.
+  const handleAccountDeleted = async () => {
+    setFlashNotice(`Tu cuenta fue eliminada definitivamente y el usuario @${profile?.username ?? ''} quedó liberado.`);
+    await logout().catch(() => undefined);
+    navigate('/ingreso', { replace: true });
   };
 
   const fullName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : '';
@@ -473,8 +483,37 @@ export default function Profile() {
               </form>
             )}
           </section>
+
+          <section aria-labelledby="danger-zone-heading" className="bg-white rounded-2xl border border-rose-200 p-5 sm:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 id="danger-zone-heading" className="text-base font-bold text-rose-900 flex items-center gap-2">
+                  <Trash2 className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />
+                  <span>Eliminar cuenta</span>
+                </h2>
+                <p className="text-sm text-slate-600 mt-1 [text-wrap:pretty]">
+                  Si eliminas tu cuenta, tus datos se borrarán de forma permanente, tu nombre de usuario quedará libre y se eliminarán tus salas.
+                </p>
+              </div>
+              <Button
+                variant="danger-soft"
+                onClick={() => setShowDeleteModal(true)}
+                icon={<Trash2 className="w-4 h-4" aria-hidden="true" />}
+                className="shrink-0"
+              >
+                Eliminar cuenta
+              </Button>
+            </div>
+          </section>
         </div>
       )}
+
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        username={profile?.username ?? ''}
+        onClose={() => setShowDeleteModal(false)}
+        onDeleted={handleAccountDeleted}
+      />
     </div>
   );
 }
