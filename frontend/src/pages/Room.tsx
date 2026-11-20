@@ -223,8 +223,8 @@ export default function Room() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">{fullName} (tú)</p>
-                  <p className="text-xs text-slate-600 truncate">@{profile?.username} · Administrador</p>
+                  <p className="text-sm font-semibold text-slate-900 break-words">{fullName} (tú)</p>
+                  <p className="text-xs text-slate-600 break-words">@{profile?.username} · Administrador</p>
                 </div>
               </div>
               <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />
