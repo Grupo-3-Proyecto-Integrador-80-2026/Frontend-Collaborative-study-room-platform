@@ -58,15 +58,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         Saltar al contenido principal
       </a>
 
-      <header className="bg-surface-card border-b border-surface-border px-6 py-3" role="banner">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <header className="bg-surface-card border-b border-surface-border px-4 sm:px-6 py-3" role="banner">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-4">
           <Link to="/" className="flex items-center gap-3 min-h-11 text-surface-text hover:text-brand-600 transition rounded-lg">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-lg text-white" aria-hidden="true">📖</span>
             <span className="text-lg font-bold tracking-tight">{APP_NAME}</span>
           </Link>
 
           <nav aria-label="Navegación principal">
-            <ul className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <ul className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 sm:gap-2 text-sm font-medium">
               <li>
                 <Link
                   to="/"
@@ -103,7 +103,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       Mi Perfil
                     </Link>
                   </li>
-                  <li className="flex items-center gap-2 pl-2 border-l border-surface-border">
+                  <li className="flex items-center gap-2 md:pl-2 md:border-l md:border-surface-border">
                     <Link
                       to="/perfil"
                       aria-label={`Ir a Mi Perfil (${profile?.username ? `@${profile.username}` : firebaseUser.email})`}

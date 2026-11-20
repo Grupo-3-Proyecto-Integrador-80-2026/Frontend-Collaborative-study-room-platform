@@ -7,19 +7,25 @@ import type { User } from 'firebase/auth';
 import { AuthProvider } from '../src/context/AuthContext';
 import { ProtectedRoute } from '../src/components/ProtectedRoute';
 import Profile from '../src/pages/Profile';
+import Login from '../src/pages/Login';
+import { PublicOnlyRoute } from '../src/components/ProtectedRoute';
 import { ApiError, authApi, profileApi, type UserProfile } from '../src/services/api';
 
 const mocks = vi.hoisted(() => ({
   auth: { currentUser: null as (User & { reload: () => Promise<void> }) | null },
   signOut: vi.fn(),
+  listener: undefined as ((user: User | null) => void) | undefined,
 }));
 vi.mock('../src/config/firebase', () => ({ auth: mocks.auth, googleProvider: {} }));
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) => {
+    mocks.listener = listener;
     void listener(mocks.auth.currentUser);
     return () => undefined;
   },
   signOut: mocks.signOut,
+  signInWithEmailAndPassword: vi.fn(),
+  signInWithPopup: vi.fn(),
 }));
 
 const sessionUser = {
@@ -42,7 +48,7 @@ function renderProfile() {
         <main>
           <Routes>
             <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/ingreso" element={<h1>Iniciar sesión</h1>} />
+            <Route path="/ingreso" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
           </Routes>
         </main>
       </AuthProvider>
@@ -58,7 +64,12 @@ const openEditor = async (user: ReturnType<typeof userEvent.setup>) => {
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.resetAllMocks();
+  sessionStorage.clear();
   mocks.auth.currentUser = sessionUser;
+  mocks.signOut.mockImplementation(async () => {
+    mocks.auth.currentUser = null;
+    mocks.listener?.(null);
+  });
   vi.spyOn(authApi, 'getMyProfile').mockResolvedValue({ success: true, user: saved });
 });
 
@@ -121,6 +132,35 @@ describe('US-04 | E1 | edición exitosa', () => {
     expect(profileApi.update).toHaveBeenCalledWith({ email: 'ana.nueva@correounivalle.edu.co' });
     expect(await screen.findByText('Perfil actualizado')).toBeInTheDocument();
     expect(sessionUser.getIdToken).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('US-04 | cambio de correo con sesión revocada', () => {
+  it('si no se puede renovar el token, cierra la sesión y explica en el login que ingrese con el correo nuevo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sessionUser.getIdToken).mockRejectedValue(new Error('auth/user-token-expired'));
+    vi.spyOn(profileApi, 'update').mockResolvedValue({ success: true, user: { ...saved, email: 'ana.nueva@correounivalle.edu.co' } });
+    renderProfile();
+    await openEditor(user);
+    const email = screen.getByRole('textbox', { name: 'Correo institucional (.edu.co)' });
+    await user.clear(email);
+    await user.type(email, 'ana.nueva@correounivalle.edu.co{Enter}');
+
+    expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
+    expect(mocks.signOut).toHaveBeenCalledOnce();
+    expect(screen.getByText('Actualizamos tu correo. Inicia sesión de nuevo con tu correo nuevo.')).toBeInTheDocument();
+  });
+
+  it('si la renovación funciona no deja avisos pendientes para el login', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(profileApi, 'update').mockResolvedValue({ success: true, user: { ...saved, email: 'ana.nueva@correounivalle.edu.co' } });
+    renderProfile();
+    await openEditor(user);
+    const email = screen.getByRole('textbox', { name: 'Correo institucional (.edu.co)' });
+    await user.clear(email);
+    await user.type(email, 'ana.nueva@correounivalle.edu.co{Enter}');
+    expect(await screen.findByText('Perfil actualizado')).toBeInTheDocument();
+    expect(sessionStorage.length).toBe(0);
   });
 });
 

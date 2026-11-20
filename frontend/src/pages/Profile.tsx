@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { ApiError, authApi, profileApi, type ProfileUpdate, type UserProfile } from '../services/api';
 import { AVATAR_OPTIONS, avatarName } from '../constants/avatars';
 import { validateProfile, type ProfileErrors, type ProfileForm } from '../utils/profileValidation';
-import { setFlashNotice } from '../utils/flashNotice';
+import { clearFlashNotice, setFlashNotice } from '../utils/flashNotice';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { TextField } from '../components/ui/TextField';
@@ -163,12 +163,14 @@ export default function Profile() {
 
       if (changes.email) {
         // La API cambió el correo en Firebase Authentication: se renueva el token
-        // para que la sesión lleve el correo nuevo.
+        // para que la sesión lleve el correo nuevo. El aviso se deja antes, por si
+        // Firebase cierra la sesión por su cuenta y el login se monta primero.
+        setFlashNotice('Actualizamos tu correo. Inicia sesión de nuevo con tu correo nuevo.');
         try {
           await auth.currentUser?.reload();
           await auth.currentUser?.getIdToken(true);
+          clearFlashNotice();
         } catch {
-          setFlashNotice('Actualizamos tu correo. Inicia sesión de nuevo con tu correo nuevo.');
           await logout().catch(() => undefined);
           return;
         }
