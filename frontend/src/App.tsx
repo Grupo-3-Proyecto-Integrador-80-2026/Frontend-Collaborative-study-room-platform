@@ -34,7 +34,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const currentPage =
     PAGE_TITLES[location.pathname] ||
-    (/^\/salas\/[^/]+$/.test(location.pathname) ? 'Sala de estudio' : 'Página no encontrada');
+    (/^\/salas\/[^/]+$/.test(location.pathname) ? 'Sala' : 'Página no encontrada');
 
   React.useEffect(() => {
     document.title = `${currentPage} · ${APP_NAME}`;
