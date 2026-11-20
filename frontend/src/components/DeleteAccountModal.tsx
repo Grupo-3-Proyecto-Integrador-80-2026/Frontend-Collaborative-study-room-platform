@@ -73,7 +73,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
             <span className="font-mono text-rose-800 font-semibold break-words">@{username}</span> quedará disponible para que otro estudiante pueda usarlo.
           </li>
           <li>
-            <strong>Salas y mensajes:</strong> las salas donde eres Administrador se eliminarán con todos sus mensajes, incluidos los de otros participantes. Tus mensajes en otras salas también se eliminarán.
+            <strong>Salas y mensajes:</strong> las salas que creaste como anfitrión se eliminarán con todos sus mensajes, incluidos los de otros participantes. Tus mensajes en otras salas también se eliminarán.
           </li>
         </ul>
       </div>
