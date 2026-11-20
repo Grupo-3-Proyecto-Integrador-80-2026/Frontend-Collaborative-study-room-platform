@@ -365,7 +365,7 @@ export default function Profile() {
                     </span>
                     <span className="text-xs text-slate-600">{avatarChoices.find((o) => o.url === avatarUrl)?.name ?? ''}</span>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-around gap-3 overflow-x-auto py-1 px-1">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-around gap-3 py-1 px-1">
                     {avatarChoices.map((option) => {
                       const isSelected = avatarUrl === option.url;
                       return (
