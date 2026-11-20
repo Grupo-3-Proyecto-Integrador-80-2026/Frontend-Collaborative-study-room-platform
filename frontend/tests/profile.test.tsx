@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('../src/config/firebase', () => ({ auth: mocks.auth, googleProvider: {} }));
 vi.mock('firebase/auth', () => ({
+  setPersistence: vi.fn(async () => undefined), sendPasswordResetEmail: vi.fn(async () => undefined),
+  browserLocalPersistence: {}, browserSessionPersistence: {},
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) => {
     mocks.listener = listener;
     void listener(mocks.auth.currentUser);
@@ -78,7 +80,7 @@ describe('US-04 | carga del perfil', () => {
     renderProfile();
     expect(await screen.findByText('Cargando la información de tu perfil...')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Ana Pérez' })).toBeInTheDocument();
-    expect(screen.getByText('@ana_qa')).toBeInTheDocument();
+    expect(screen.getByText('@ana_qa', { selector: 'dd' })).toBeInTheDocument();
     expect(screen.getByText('ana@correounivalle.edu.co')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText('Cargando la información de tu perfil...')).not.toBeInTheDocument());
   });
