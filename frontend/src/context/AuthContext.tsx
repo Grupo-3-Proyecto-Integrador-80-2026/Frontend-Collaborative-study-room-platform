@@ -11,6 +11,8 @@ interface AuthContextType {
   needsUsername: boolean;
   profileError: string | null;
   refreshProfile: () => Promise<void>;
+  /** Reemplaza el perfil en memoria sin pasar por el estado de carga global. */
+  replaceProfile: (profile: UserProfile) => void;
   logout: () => Promise<void>;
 }
 
@@ -79,6 +81,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [fetchProfile]);
 
+  const replaceProfile = useCallback((next: UserProfile) => {
+    setProfile(next);
+    setNeedsUsername(!next.username?.trim());
+  }, []);
+
   const logout = useCallback(async () => {
     await fbSignOut(auth);
     ++profileRequest.current;
@@ -112,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         needsUsername,
         profileError,
         refreshProfile: fetchProfile,
+        replaceProfile,
         logout,
       }}
     >

@@ -4,14 +4,7 @@ import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/a
 import { auth, googleProvider } from '../config/firebase';
 import { authApi, ApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-
-const AVATAR_PRESETS = [
-  'https://api.dicebear.com/9.x/bottts/svg?seed=Felix',
-  'https://api.dicebear.com/9.x/bottts/svg?seed=Aria',
-  'https://api.dicebear.com/9.x/bottts/svg?seed=Luna',
-  'https://api.dicebear.com/9.x/bottts/svg?seed=Milo',
-  'https://api.dicebear.com/9.x/bottts/svg?seed=Leo',
-];
+import { AVATAR_PRESETS } from '../constants/avatars';
 
 // Validador de correo institucional: exige sintaxis válida y dominio .edu.co
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

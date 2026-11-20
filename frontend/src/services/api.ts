@@ -67,7 +67,8 @@ export async function apiFetch<T>(
     headers,
   });
 
-  const data = await response.json().catch(() => null);
+  // 204 (por ejemplo DELETE /api/users/me) llega sin cuerpo.
+  const data = response.status === 204 ? null : await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new ApiError(
@@ -116,6 +117,45 @@ export const authApi = {
         method: 'POST',
         body: JSON.stringify(body),
       },
+      true
+    ),
+};
+
+export type ProfileUpdate = Partial<{
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  avatarUrl: string | null;
+}>;
+
+// Endpoints del Sprint 2 · US-04 y US-05
+export const profileApi = {
+  update: (body: ProfileUpdate) =>
+    apiFetch<{ success: boolean; user: UserProfile }>(
+      '/api/users/me',
+      { method: 'PATCH', body: JSON.stringify(body) },
+      true
+    ),
+
+  deleteAccount: () => apiFetch<null>('/api/users/me', { method: 'DELETE' }, true),
+};
+
+export interface Room {
+  id: string;
+  ownerId: string;
+  name: string;
+  createdAt: string;
+}
+
+// Endpoints del Sprint 2 · US-06
+export const roomsApi = {
+  listMine: () => apiFetch<{ success: boolean; rooms: Room[] }>('/api/rooms', {}, true),
+
+  create: (name: string) =>
+    apiFetch<{ success: boolean; room: Room }>(
+      '/api/rooms',
+      { method: 'POST', body: JSON.stringify({ name }) },
       true
     ),
 };
