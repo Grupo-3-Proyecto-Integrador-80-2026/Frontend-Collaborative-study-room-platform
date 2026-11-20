@@ -1,25 +1,28 @@
 import { Link } from 'react-router-dom';
+import { ArrowLeft, Compass } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className="min-h-[50vh] flex flex-col items-center justify-center text-center px-4">
-      <span className="text-6xl mb-3" role="img" aria-label="Lupa de búsqueda indicando no encontrado">
-        🔍
-      </span>
-      <h1 className="text-3xl font-bold text-surface-text tracking-tight sm:text-4xl">
-        404 - Página no encontrada
-      </h1>
-      <p className="mt-3 text-base text-surface-muted max-w-md">
-        Lo sentimos, la ruta a la que intentas acceder no existe en la plataforma o fue trasladada.
-      </p>
-      <div className="mt-6">
+    <section aria-labelledby="not-found-title" className="max-w-xl mx-auto px-4 py-12 sm:py-16">
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 text-center shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4" aria-hidden="true">
+          <Compass className="w-7 h-7" />
+        </div>
+        <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-1">Error 404</p>
+        <h1 id="not-found-title" className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mb-2">
+          Página no encontrada
+        </h1>
+        <p className="text-sm text-slate-600 max-w-md mx-auto mb-6 [text-wrap:pretty]">
+          La dirección que abriste no existe en el Salón de Estudio Colaborativo o fue trasladada.
+        </p>
         <Link
           to="/"
-          className="inline-flex min-h-11 items-center px-5 rounded-lg bg-brand-600 text-white text-sm font-semibold shadow-sm hover:bg-brand-700 transition"
+          className="min-h-12 inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors"
         >
-          ← Volver al inicio
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          <span>Volver al inicio</span>
         </Link>
       </div>
-    </div>
+    </section>
   );
 }
