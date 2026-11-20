@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import ChooseUsername from './pages/ChooseUsername';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
 const APP_NAME = 'Salón de Estudio Colaborativo';
@@ -57,18 +58,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         Saltar al contenido principal
       </a>
 
-      <header className="bg-surface-card border-b border-surface-border px-6 py-3" role="banner">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <header className="bg-surface-card border-b border-surface-border px-4 sm:px-6 py-3" role="banner">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-4">
           <Link to="/" className="flex items-center gap-3 min-h-11 text-surface-text hover:text-brand-600 transition rounded-lg">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-lg text-white" aria-hidden="true">📖</span>
             <span className="text-lg font-bold tracking-tight">{APP_NAME}</span>
           </Link>
 
           <nav aria-label="Navegación principal">
-            <ul className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <ul className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 sm:gap-2 text-sm font-medium">
               <li>
                 <Link
                   to="/"
+                  aria-current={location.pathname === '/' ? 'page' : undefined}
                   className={`inline-flex min-h-11 items-center px-3 rounded-lg ${
                     location.pathname === '/' ? 'text-brand-600 font-semibold underline underline-offset-8' : 'text-surface-muted hover:text-brand-600'
                   }`}
@@ -82,6 +84,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <li>
                     <Link
                       to="/panel"
+                      aria-current={location.pathname === '/panel' ? 'page' : undefined}
                       className={`inline-flex min-h-11 items-center px-3 rounded-lg ${
                         location.pathname === '/panel' ? 'text-brand-600 font-semibold underline underline-offset-8' : 'text-surface-muted hover:text-brand-600'
                       }`}
@@ -89,13 +92,30 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       Panel
                     </Link>
                   </li>
-                  <li className="flex items-center gap-2 pl-2 border-l border-surface-border">
-                    {profile?.avatarUrl && (
-                      <img src={profile.avatarUrl} alt="" className="w-8 h-8 rounded-full bg-brand-50" />
-                    )}
-                    <span className="text-xs font-semibold text-surface-text hidden sm:inline">
-                      {profile?.username ? `@${profile.username}` : firebaseUser.email}
-                    </span>
+                  <li>
+                    <Link
+                      to="/perfil"
+                      aria-current={location.pathname === '/perfil' ? 'page' : undefined}
+                      className={`inline-flex min-h-11 items-center px-3 rounded-lg ${
+                        location.pathname === '/perfil' ? 'text-brand-600 font-semibold underline underline-offset-8' : 'text-surface-muted hover:text-brand-600'
+                      }`}
+                    >
+                      Mi perfil
+                    </Link>
+                  </li>
+                  <li className="flex items-center gap-2 md:pl-2 md:border-l md:border-surface-border">
+                    <Link
+                      to="/perfil"
+                      aria-label={`Ir a Mi perfil (${profile?.username ? `@${profile.username}` : firebaseUser.email})`}
+                      className="inline-flex min-h-11 items-center gap-2 px-1 rounded-lg hover:text-brand-600"
+                    >
+                      {profile?.avatarUrl && (
+                        <img src={profile.avatarUrl} alt="" className="w-8 h-8 rounded-full bg-brand-50" />
+                      )}
+                      <span className="text-xs font-semibold text-surface-text hidden sm:inline">
+                        {profile?.username ? `@${profile.username}` : firebaseUser.email}
+                      </span>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       disabled={isLoggingOut}
@@ -196,6 +216,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/perfil"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />
