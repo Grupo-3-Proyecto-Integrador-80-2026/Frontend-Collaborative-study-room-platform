@@ -137,8 +137,10 @@ export default function Login() {
     try {
       await sendPasswordResetEmail(auth, emailLower);
       setResetState('sent');
-    } catch {
-      setResetState('failed');
+    } catch (err) {
+      // Sin protección contra enumeración, Firebase responde «user-not-found»: se muestra
+      // el mismo mensaje neutro para no revelar qué correos tienen cuenta.
+      setResetState((err as { code?: string })?.code === 'auth/user-not-found' ? 'sent' : 'failed');
     }
   };
 
