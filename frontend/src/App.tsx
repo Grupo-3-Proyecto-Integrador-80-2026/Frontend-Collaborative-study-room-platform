@@ -19,8 +19,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/ingreso': 'Iniciar sesión',
   '/registro': 'Crear cuenta',
   '/registro/usuario': 'Elegir nombre de usuario',
-  '/panel': 'Panel de Salas',
-  '/perfil': 'Mi Perfil',
+  '/panel': 'Panel',
+  '/perfil': 'Mi perfil',
   '/ayuda': 'Ayuda',
   '/accesibilidad': 'Declaración de accesibilidad',
 };
@@ -89,7 +89,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         location.pathname === '/panel' ? 'text-brand-600 font-semibold underline underline-offset-8' : 'text-surface-muted hover:text-brand-600'
                       }`}
                     >
-                      Panel de Salas
+                      Panel
                     </Link>
                   </li>
                   <li>
@@ -100,13 +100,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         location.pathname === '/perfil' ? 'text-brand-600 font-semibold underline underline-offset-8' : 'text-surface-muted hover:text-brand-600'
                       }`}
                     >
-                      Mi Perfil
+                      Mi perfil
                     </Link>
                   </li>
                   <li className="flex items-center gap-2 md:pl-2 md:border-l md:border-surface-border">
                     <Link
                       to="/perfil"
-                      aria-label={`Ir a Mi Perfil (${profile?.username ? `@${profile.username}` : firebaseUser.email})`}
+                      aria-label={`Ir a Mi perfil (${profile?.username ? `@${profile.username}` : firebaseUser.email})`}
                       className="inline-flex min-h-11 items-center gap-2 px-1 rounded-lg hover:text-brand-600"
                     >
                       {profile?.avatarUrl && (

@@ -239,7 +239,7 @@ export default function Profile() {
           className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-700 transition-colors rounded-lg px-1"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Volver al Panel de Salas</span>
+          <span>Volver al panel</span>
         </Link>
       </div>
 
@@ -297,7 +297,7 @@ export default function Profile() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-0.5">Mi Perfil</p>
+                  <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-0.5">Mi perfil</p>
                   <h1 id="profile-heading" className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight [text-wrap:pretty] break-words">
                     {fullName}
                   </h1>
