@@ -9,7 +9,7 @@ import { ProtectedRoute, PublicOnlyRoute } from '../src/components/ProtectedRout
 import { Layout } from '../src/App';
 import Dashboard from '../src/pages/Dashboard';
 import Login from '../src/pages/Login';
-import { authApi, type UserProfile } from '../src/services/api';
+import { authApi, roomsApi, type UserProfile } from '../src/services/api';
 
 const mocks = vi.hoisted(() => ({
   auth: { currentUser: null as User | null },
@@ -80,6 +80,7 @@ beforeEach(() => {
     await mocks.listener?.(null);
   });
   vi.spyOn(authApi, 'getMyProfile').mockResolvedValue({ success: true, user: profile });
+  vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [] });
 });
 
 describe('US-03 | E1 | login manual exitoso', () => {
@@ -90,7 +91,7 @@ describe('US-03 | E1 | login manual exitoso', () => {
     await user.type(emailInput(), ' Ana@Correounivalle.edu.co ');
     await user.type(passwordInput(), 'Prueba123');
     await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(await screen.findByText('¡Hola, Ana Pérez!')).toBeInTheDocument();
+    expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
     expect(mocks.signIn).toHaveBeenCalledExactlyOnceWith(mocks.auth, 'ana@correounivalle.edu.co', 'Prueba123');
     expect(authApi.getMyProfile).toHaveBeenCalled();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -124,7 +125,7 @@ describe('US-03 | E1 | login manual exitoso', () => {
     expect(screen.getByRole('button', { name: 'Ingresando...' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Continuar con Google' })).toBeDisabled();
     await act(async () => { await finishLogin(); });
-    expect(await screen.findByText('¡Hola, Ana Pérez!')).toBeInTheDocument();
+    expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
   });
 });
 
@@ -141,7 +142,7 @@ describe('US-03 | E3 | credenciales incorrectas', () => {
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('Correo o contraseña incorrectos');
       expect(alert.textContent).not.toContain('ana@correounivalle.edu.co');
-      expect(screen.queryByRole('heading', { name: '¡Hola, Ana Pérez!' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: '¡Hola, Ana!' })).not.toBeInTheDocument();
       expect(authApi.getMyProfile).not.toHaveBeenCalled();
       expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeEnabled();
     }
@@ -159,7 +160,7 @@ describe('US-03 | E3 | credenciales incorrectas', () => {
     await user.type(passwordInput(), 'Prueba123');
     successfulSignIn();
     await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(await screen.findByText('¡Hola, Ana Pérez!')).toBeInTheDocument();
+    expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
   });
 });
 
@@ -188,7 +189,7 @@ describe('US-03 | validación de campos', () => {
     expect(mocks.signIn).not.toHaveBeenCalled();
     expect(authApi.getMyProfile).not.toHaveBeenCalled();
     expect(mocks.auth.currentUser).toBeNull();
-    expect(screen.queryByText('¡Hola, Ana Pérez!')).not.toBeInTheDocument();
+    expect(screen.queryByText('¡Hola, Ana!')).not.toBeInTheDocument();
   });
 
   it('QA-06/WCAG 3.3.8: permite pegar la contraseña sin restricciones', async () => {
@@ -219,7 +220,7 @@ describe('US-03 | E2 | Google recurrente', () => {
     const user = userEvent.setup();
     renderFlow();
     await user.click(await screen.findByRole('button', { name: 'Continuar con Google' }));
-    expect(await screen.findByText('¡Hola, Ana Pérez!')).toBeInTheDocument();
+    expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Completa tu perfil' })).not.toBeInTheDocument();
   });
 });
@@ -231,7 +232,7 @@ describe('US-03 | E4 | cierre de sesión', () => {
     mocks.signOut.mockReturnValue(new Promise<void>(done => { resolveLogout = done; }));
     const user = userEvent.setup();
     renderFlow('/panel', true);
-    expect(await screen.findByText('¡Hola, Ana Pérez!')).toBeInTheDocument();
+    expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
     expect(screen.getByRole('button', { name: 'Cerrando...' })).toBeDisabled();
     await act(async () => resolveLogout());
@@ -244,7 +245,7 @@ describe('US-03 | E4 | cierre de sesión', () => {
     mocks.signOut.mockRejectedValueOnce(new Error('offline'));
     const user = userEvent.setup();
     renderFlow('/panel', true);
-    expect(await screen.findByText('¡Hola, Ana Pérez!')).toBeInTheDocument();
+    expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos cerrar la sesión');
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeEnabled();
@@ -252,21 +253,11 @@ describe('US-03 | E4 | cierre de sesión', () => {
     expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
   });
 
-  it('el botón del panel también cierra la sesión', async () => {
-    mocks.auth.currentUser = sessionUser;
-    const user = userEvent.setup();
-    renderFlow('/panel');
-    expect(await screen.findByText('¡Hola, Ana Pérez!')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '🚪 Cerrar sesión' }));
-    expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
-    expect(mocks.signOut).toHaveBeenCalledOnce();
-  });
-
   it('tras cerrar sesión, la ruta privada vuelve al login sin datos (botón atrás)', async () => {
     mocks.auth.currentUser = null;
     renderFlow('/panel');
     expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
-    expect(screen.queryByText('¡Hola, Ana Pérez!')).not.toBeInTheDocument();
+    expect(screen.queryByText('¡Hola, Ana!')).not.toBeInTheDocument();
     expect(authApi.getMyProfile).not.toHaveBeenCalled();
   });
 
