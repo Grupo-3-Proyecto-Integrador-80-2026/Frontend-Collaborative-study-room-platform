@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('../src/config/firebase', () => ({ auth: mocks.auth, googleProvider: {} }));
 vi.mock('firebase/auth', () => ({
+  setPersistence: vi.fn(async () => undefined), sendPasswordResetEmail: vi.fn(async () => undefined),
+  browserLocalPersistence: {}, browserSessionPersistence: {},
   onAuthStateChanged: (_auth: unknown, listener: typeof mocks.listener) => {
     mocks.listener = listener;
     void listener?.(mocks.auth.currentUser);

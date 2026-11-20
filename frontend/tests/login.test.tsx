@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../src/config/firebase', () => ({ auth: mocks.auth, googleProvider: {} }));
 vi.mock('../src/utils/navigation', () => ({ reloadPage: mocks.reload }));
 vi.mock('firebase/auth', () => ({
+  setPersistence: vi.fn(async () => undefined), sendPasswordResetEmail: vi.fn(async () => undefined),
+  browserLocalPersistence: {}, browserSessionPersistence: {},
   onAuthStateChanged: (_auth: unknown, listener: typeof mocks.listener) => {
     mocks.listener = listener;
     void listener?.(mocks.auth.currentUser);
@@ -221,7 +223,7 @@ describe('US-03 | E2 | Google recurrente', () => {
     renderFlow();
     await user.click(await screen.findByRole('button', { name: 'Continuar con Google' }));
     expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Completa tu perfil' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Finalizar perfil con Google' })).not.toBeInTheDocument();
   });
 });
 
@@ -233,8 +235,8 @@ describe('US-03 | E4 | cierre de sesión', () => {
     const user = userEvent.setup();
     renderFlow('/panel', true);
     expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
-    expect(screen.getByRole('button', { name: 'Cerrando...' })).toBeDisabled();
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Cerrar sesión' }));
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Cerrando...' })).toBeDisabled();
     await act(async () => resolveLogout());
     expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
     expect(mocks.signOut).toHaveBeenCalledOnce();
@@ -246,10 +248,10 @@ describe('US-03 | E4 | cierre de sesión', () => {
     const user = userEvent.setup();
     renderFlow('/panel', true);
     expect(await screen.findByText('¡Hola, Ana!')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Cerrar sesión' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos cerrar la sesión');
-    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeEnabled();
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Cerrar sesión' })).toBeEnabled();
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Cerrar sesión' }));
     expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
   });
 
@@ -286,11 +288,14 @@ describe('US-03 | accesibilidad', () => {
       screen.getByRole('heading', { name: 'Iniciar sesión' }),
       emailInput(),
       passwordInput(),
-      screen.getByRole('button', { name: 'Ver contraseña' }),
+      screen.getByRole('button', { name: 'Mostrar contraseña' }),
+      screen.getByRole('checkbox', { name: 'Recordar sesión' }),
+      screen.getByRole('button', { name: '¿Olvidaste tu contraseña?' }),
       screen.getByRole('button', { name: 'Iniciar sesión' }),
-      screen.getByRole('button', { name: 'Continuar con Google' }),
       screen.getByRole('link', { name: 'Regístrate aquí' }),
     ];
+    // Como en el prototipo, «Continuar con Google» va antes del formulario.
+    expect(screen.getByRole('button', { name: 'Continuar con Google' }).compareDocumentPosition(emailInput()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Salta los enlaces del header (skip link, logo, nav) hasta llegar al formulario
     await user.tab();
     while (document.activeElement !== sequence[1]) {
@@ -306,7 +311,7 @@ describe('US-03 | accesibilidad', () => {
   it('el botón de contraseña anuncia su estado (aria-pressed)', async () => {
     const user = userEvent.setup();
     renderFlow();
-    const show = screen.getByRole('button', { name: 'Ver contraseña' });
+    const show = screen.getByRole('button', { name: 'Mostrar contraseña' });
     expect(show).toHaveAttribute('aria-pressed', 'false');
     await user.click(show);
     expect(screen.getByRole('button', { name: 'Ocultar contraseña' })).toHaveAttribute('aria-pressed', 'true');

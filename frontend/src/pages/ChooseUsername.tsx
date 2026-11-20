@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi, ApiError } from '../services/api';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Alert } from '../components/ui/Alert';
+import { Button } from '../components/ui/Button';
+import { TextField } from '../components/ui/TextField';
+import { LogoMark } from '../components/ui/Logo';
 
 export default function ChooseUsername() {
   const navigate = useNavigate();
@@ -85,122 +90,135 @@ export default function ChooseUsername() {
     }
   };
 
+  const handleExit = async (to: '/' | '/ingreso') => {
+    try {
+      await logout();
+      navigate(to, { replace: true });
+    } catch {
+      setGeneralError('No pudimos cerrar la sesión. Intenta de nuevo.');
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto py-10 px-4">
-      <div className="bg-surface-card p-6 sm:p-8 rounded-xl shadow-sm border border-surface-border">
-        <div className="text-center mb-6">
-          <span className="text-4xl" aria-hidden="true">🪪</span>
-          <h1 className="text-2xl font-bold text-surface-text mt-2">Completa tu perfil</h1>
-          <p className="text-sm text-surface-muted mt-1 break-words">
-            Hola, <strong>{firebaseUser?.displayName || 'Estudiante'}</strong> ({firebaseUser?.email}). Elige tu nombre de usuario para terminar de configurar tu cuenta.
-          </p>
+    <div className="flex flex-col justify-center py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg mb-4 w-full">
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => void handleExit('/')}
+          className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer disabled:opacity-60"
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Cancelar y volver al inicio</span>
+        </button>
+      </div>
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg w-full">
+        <div className="text-center mb-6 flex flex-col items-center">
+          <div className="mb-3">
+            <LogoMark size="lg" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Finalizar perfil con Google</h1>
+          <p className="text-sm text-slate-600 mt-1">Solo falta elegir tu nombre de usuario único para entrar al salón</p>
         </div>
 
-        {generalError && (
-          <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-700 text-red-900 rounded-lg text-sm flex items-center gap-2">
-            <span aria-hidden="true">⚠️</span>
-            <span>{generalError}</span>
-          </div>
-        )}
-
-        <p role="status" className="sr-only">{isSubmitting ? 'Guardando tu perfil...' : ''}</p>
-        <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting} className="space-y-4">
-          <div>
-            <label htmlFor="username" className="block text-sm font-semibold text-surface-text mb-1">
-              Nombre de usuario <span className="text-red-700" aria-hidden="true">*</span>
-            </label>
-            <input
-              id="username"
-              ref={usernameRef}
-              type="text"
-              autoComplete="username"
-              required
-              aria-required="true"
-              aria-invalid={!!fieldErrors.username}
-              aria-describedby={`username-help${fieldErrors.username ? ' username-error' : ''}`}
-              placeholder="ejemplo_2026"
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
-            />
-            {fieldErrors.username && (
-              <p id="username-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
-                {fieldErrors.username}
-              </p>
-            )}
-            <p id="username-help" className="mt-1 text-xs text-surface-muted">
-              De 3 a 20 caracteres: letras sin tilde, números y guiones bajos (_).
-            </p>
-          </div>
-
-          {!hasFirstName && (
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-semibold text-surface-text mb-1">
-                Tus nombres <span className="text-red-700" aria-hidden="true">*</span>
-              </label>
-              <input
-                id="firstName"
-                ref={firstNameRef}
-                type="text"
-                autoComplete="given-name"
-                required
-                aria-invalid={!!fieldErrors.firstName}
-                aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined}
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
-              />
-              {fieldErrors.firstName && <p id="firstName-error" role="alert" className="mt-1 text-xs text-red-700 font-medium">{fieldErrors.firstName}</p>}
-            </div>
-          )}
-
-          {/* Si Google no tiene apellidos registrados, se solicita aquí */}
-          {!hasLastName && (
-            <div>
-              <label htmlFor="lastName" className="block text-sm font-semibold text-surface-text mb-1">
-                Tus apellidos <span className="text-red-700" aria-hidden="true">*</span>
-              </label>
-              <input
-                id="lastName"
-                ref={lastNameRef}
-                type="text"
-                autoComplete="family-name"
-                required
-                aria-required="true"
-                aria-invalid={!!fieldErrors.lastName}
-                aria-describedby={fieldErrors.lastName ? 'lastName-error' : undefined}
-                placeholder="Ingresa tus apellidos"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
-              />
-              {fieldErrors.lastName && (
-                <p id="lastName-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
-                  {fieldErrors.lastName}
-                </p>
+        <div className="bg-white py-6 sm:py-8 px-5 sm:px-8 shadow-sm border border-slate-200 rounded-2xl w-full">
+          <div className="p-4 rounded-2xl border mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 border-slate-200">
+            <div className="flex items-center gap-3.5 min-w-0">
+              {firebaseUser?.photoURL ? (
+                <img src={firebaseUser.photoURL} alt="" referrerPolicy="no-referrer" className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm shrink-0" />
+              ) : (
+                <span aria-hidden="true" className="w-12 h-12 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center shrink-0">
+                  {(firebaseUser?.displayName || 'E')[0]}
+                </span>
               )}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <h2 className="text-base font-bold text-slate-900 leading-tight break-words">{firebaseUser?.displayName || 'Estudiante'}</h2>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span>Cuenta de Google</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5 font-mono truncate" title={firebaseUser?.email ?? undefined}>{firebaseUser?.email}</p>
+              </div>
             </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full min-h-11 flex items-center justify-center px-4 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold transition disabled:opacity-50"
-          >
-            {isSubmitting ? 'Guardando...' : 'Completar y entrar al panel'}
-          </button>
-
-          <div className="pt-2 text-center">
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => void logout().catch(() => setGeneralError('No pudimos cerrar la sesión. Intenta de nuevo.'))}
-              className="min-h-11 px-2 rounded text-xs text-red-700 hover:underline"
+              onClick={() => void handleExit('/ingreso')}
+              className="w-full sm:w-auto min-h-11 flex items-center justify-center text-sm font-semibold text-indigo-600 hover:text-indigo-700 bg-white hover:bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl transition-colors whitespace-nowrap cursor-pointer shrink-0 disabled:opacity-60"
             >
-              Cancelar y salir de esta cuenta
+              Usar otra cuenta
             </button>
           </div>
-        </form>
+
+          {generalError && (
+            <Alert tone="error" className="mb-4">
+              {generalError}
+            </Alert>
+          )}
+
+          <p role="status" className="sr-only">{isSubmitting ? 'Guardando tu perfil...' : ''}</p>
+          <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting} className="space-y-5">
+            <TextField
+              id="username"
+              ref={usernameRef}
+              label="Nombre de usuario"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="valentinaramos"
+              leading={<span className="font-mono text-sm">@</span>}
+              className="[&_input]:font-mono"
+              required
+              aria-required="true"
+              announceError
+              value={username}
+              error={fieldErrors.username}
+              help="Con este usuario te identificarán en tus salas. De 3 a 20 caracteres: letras sin tilde, números y guion bajo (_)."
+              onChange={(e) => setUsername(e.target.value.toLowerCase())}
+            />
+
+            {!hasFirstName && (
+              <TextField
+                id="firstName"
+                ref={firstNameRef}
+                label="Tus nombres"
+                autoComplete="given-name"
+                required
+                aria-required="true"
+                announceError
+                value={firstName}
+                error={fieldErrors.firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            )}
+
+            {/* Si Google no tiene apellidos registrados, se solicitan aquí */}
+            {!hasLastName && (
+              <TextField
+                id="lastName"
+                ref={lastNameRef}
+                label="Tus apellidos"
+                autoComplete="family-name"
+                placeholder="Ingresa tus apellidos"
+                required
+                aria-required="true"
+                announceError
+                value={lastName}
+                error={fieldErrors.lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            )}
+
+            <div className="pt-2">
+              <Button type="submit" loading={isSubmitting} loadingText="Guardando..." className="!w-full">
+                Completar y entrar al panel
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

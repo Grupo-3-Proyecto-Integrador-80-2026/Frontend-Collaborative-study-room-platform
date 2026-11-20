@@ -6,7 +6,7 @@ const ProfileError = () => {
   const { profileError, refreshProfile, logout } = useAuth();
   const [logoutError, setLogoutError] = React.useState(false);
   return (
-    <section className="max-w-md mx-auto space-y-4 py-10" aria-label="Verificación de perfil">
+    <section className="max-w-md mx-auto space-y-4 py-10 px-4" aria-label="Verificación de perfil">
       <p role="alert">{profileError || 'No pudimos verificar tu perfil.'}</p>
       <button className="min-h-11 px-4 rounded-lg bg-brand-600 text-white" onClick={() => void refreshProfile().catch(() => undefined)}>
         Reintentar
@@ -19,21 +19,22 @@ const ProfileError = () => {
   );
 };
 
+// Estado de carga mientras Firebase confirma la sesión (mismo aspecto en rutas públicas y privadas).
+const SessionCheck = () => (
+  <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3 px-4" role="status">
+    <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+    </svg>
+    <span className="text-slate-600 text-sm font-medium">Verificando sesión...</span>
+  </div>
+);
+
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { firebaseUser, profile, loading, needsUsername, profileError } = useAuth();
   const location = useLocation();
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3" role="status">
-        <svg className="animate-spin h-8 w-8 text-brand-600" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
-        <span className="text-surface-muted text-sm font-medium">Verificando sesión...</span>
-      </div>
-    );
-  }
+  if (loading) return <SessionCheck />;
 
   // 1. Si no hay sesión iniciada -> Al Login guardando la ruta solicitada
   if (!firebaseUser) {
@@ -58,7 +59,7 @@ export const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ child
   const { firebaseUser, profile, loading, needsUsername, profileError } = useAuth();
   const location = useLocation();
 
-  if (loading) return <p role="status">Verificando sesión...</p>;
+  if (loading) return <SessionCheck />;
 
   if (firebaseUser) {
     if (profileError || (!profile && !needsUsername)) return <ProfileError />;

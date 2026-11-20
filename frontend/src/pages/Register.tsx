@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import { ArrowLeft, Camera, Check, CheckCircle2, Lock, Mail, User } from 'lucide-react';
 import { auth, googleProvider } from '../config/firebase';
 import { authApi, ApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { AVATAR_PRESETS } from '../constants/avatars';
+import { AVATAR_OPTIONS } from '../constants/avatars';
+import { Alert } from '../components/ui/Alert';
+import { Button } from '../components/ui/Button';
+import { TextField } from '../components/ui/TextField';
+import { PasswordToggle } from '../components/ui/PasswordToggle';
+import { AuthDivider, GoogleButton } from '../components/ui/GoogleButton';
 
 // Validador de correo institucional: exige sintaxis válida y dominio .edu.co
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -13,6 +19,8 @@ const isInstitutionalEmail = (email: string): boolean => {
   const lower = email.trim().toLowerCase();
   return EMAIL_PATTERN.test(lower) && lower.endsWith('.edu.co');
 };
+
+type Field = 'firstName' | 'lastName' | 'username' | 'email' | 'password' | 'terms';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -24,18 +32,22 @@ export default function Register() {
     username: '',
     email: '',
     password: '',
-    avatarUrl: AVATAR_PRESETS[0],
+    avatarUrl: AVATAR_OPTIONS[0].url,
   });
-
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
-  const [usernameNotice, setUsernameNotice] = useState<string | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState(false);
+
+  const update = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const validateClient = () => {
-    const errors: Record<string, string> = {};
+    const errors: Partial<Record<Field, string>> = {};
 
     if (!formData.firstName.trim()) errors.firstName = 'Escribe tus nombres.';
     if (!formData.lastName.trim()) errors.lastName = 'Escribe tus apellidos.';
@@ -54,11 +66,11 @@ export default function Register() {
 
     if (!formData.password) {
       errors.password = 'Escribe una contraseña.';
-    } else {
-      if (formData.password.length < 8) errors.password = 'Tu contraseña debe tener al menos 8 caracteres.';
-      else if (!/\p{L}/u.test(formData.password)) errors.password = 'Tu contraseña debe incluir al menos una letra.';
-      else if (!/\d/.test(formData.password)) errors.password = 'Tu contraseña debe incluir al menos un número.';
-    }
+    } else if (formData.password.length < 8) errors.password = 'Tu contraseña debe tener al menos 8 caracteres.';
+    else if (!/\p{L}/u.test(formData.password)) errors.password = 'Tu contraseña debe incluir al menos una letra.';
+    else if (!/\d/.test(formData.password)) errors.password = 'Tu contraseña debe incluir al menos un número.';
+
+    if (!agreeTerms) errors.terms = 'Acepta las normas de convivencia para crear tu cuenta.';
 
     return errors;
   };
@@ -68,18 +80,14 @@ export default function Register() {
     if (u.length < 3) return;
 
     setCheckingUsername(true);
-    setUsernameNotice(null);
+    setUsernameAvailable(false);
     try {
       const res = await authApi.checkUsernameAvailability(u);
       if (!res.available) {
         setFieldErrors((prev) => ({ ...prev, username: 'Ese nombre de usuario ya está en uso. Prueba con otro.' }));
       } else {
-        setFieldErrors((prev) => {
-          const next = { ...prev };
-          delete next.username;
-          return next;
-        });
-        setUsernameNotice('✓ Nombre de usuario disponible.');
+        setFieldErrors((prev) => ({ ...prev, username: undefined }));
+        setUsernameAvailable(true);
       }
     } catch {
       // Ignorar error de red puntual en validación previa
@@ -118,9 +126,9 @@ export default function Register() {
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.errors && err.errors.length > 0) {
-          const map: Record<string, string> = {};
+          const map: Partial<Record<Field, string>> = {};
           err.errors.forEach((item) => {
-            map[item.field] = item.message;
+            map[item.field as Field] = item.message;
           });
           setFieldErrors(map);
         }
@@ -132,8 +140,8 @@ export default function Register() {
       setIsSubmitting(false);
     }
   };
-  
-const handleGoogleSignup = async () => {
+
+  const handleGoogleSignup = async () => {
     setGeneralError(null);
     setIsSubmitting(true);
     try {
@@ -163,285 +171,225 @@ const handleGoogleSignup = async () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto py-6 px-4">
-      <div className="bg-surface-card p-6 sm:p-8 rounded-xl shadow-sm border border-surface-border">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-surface-text tracking-tight">Crear cuenta</h1>
-          <p className="mt-1 text-sm text-surface-muted">
-            Únete con tu correo institucional y colabora en salas de estudio.
+    <div className="flex flex-col justify-center py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2.5 w-full">
+        <Link to="/" className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
+          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Volver al inicio</span>
+        </Link>
+        <p className="min-h-11 flex items-center text-sm text-slate-600">
+          <span>¿Ya tienes cuenta?</span>
+          <Link to="/ingreso" className="font-semibold text-indigo-600 hover:text-indigo-700 ml-1 p-1">
+            Iniciar sesión
+          </Link>
+        </p>
+      </div>
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg w-full">
+        <div className="bg-white py-6 sm:py-8 px-5 sm:px-8 shadow-sm border border-slate-200 rounded-3xl w-full">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 text-center mb-5">Crear cuenta</h1>
+
+          <GoogleButton onClick={handleGoogleSignup} disabled={isSubmitting} />
+          <AuthDivider>o regístrate con tus datos</AuthDivider>
+
+          {generalError && (
+            <Alert tone="error" className="mb-5">
+              {generalError}
+            </Alert>
+          )}
+          <p role="status" className="sr-only">
+            {isSubmitting ? 'Creando tu cuenta y guardando tu perfil...' : ''}
           </p>
-        </header>
 
-        {generalError && (
-          <div
-            role="alert"
-            className="mb-6 p-4 bg-red-50 border border-red-700 text-red-900 rounded-lg text-sm flex items-start gap-2"
-          >
-            <span aria-hidden="true" className="text-lg">⚠️</span>
-            <span>{generalError}</span>
-          </div>
-        )}
+          <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting} className="space-y-4">
+            <fieldset className="mb-2 p-4 sm:p-5 bg-slate-50/70 border border-slate-200 rounded-2xl" disabled={isSubmitting}>
+              <legend className="sr-only">Elige tu avatar</legend>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4" aria-hidden="true">
+                <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                  <Camera className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Elige tu avatar</span>
+                </span>
+                <span className="text-xs text-slate-600">Visible en tus salas</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center sm:justify-around gap-2 pb-1 pt-1 px-1">
+                {AVATAR_OPTIONS.map((avatar) => {
+                  const isSelected = formData.avatarUrl === avatar.url;
+                  return (
+                    <label
+                      key={avatar.url}
+                      className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0 rounded-xl p-1 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-indigo-600 has-[:focus-visible]:ring-offset-2"
+                    >
+                      <input
+                        type="radio"
+                        name="avatarUrl"
+                        value={avatar.url}
+                        checked={isSelected}
+                        onChange={() => update('avatarUrl', avatar.url)}
+                        className="sr-only"
+                      />
+                      <span className="relative">
+                        <img
+                          src={avatar.url}
+                          alt=""
+                          className={`w-12 h-12 rounded-full object-cover transition-all bg-white ${
+                            isSelected ? 'ring-2 ring-indigo-600 ring-offset-2 scale-105 shadow-sm' : 'opacity-85 hover:opacity-100 border border-slate-200'
+                          }`}
+                        />
+                        {isSelected && (
+                          <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white border-2 border-white shadow-sm" aria-hidden="true">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </span>
+                        )}
+                      </span>
+                      <span className={`text-xs transition-colors ${isSelected ? 'font-bold text-indigo-700' : 'font-medium text-slate-600 group-hover:text-slate-900'}`}>
+                        {avatar.name}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {/* Nombres y Apellidos */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-semibold text-surface-text mb-1">
-                Nombres <span className="text-red-700" aria-hidden="true">*</span>
-              </label>
-              <input
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TextField
                 id="firstName"
                 name="firstName"
-                type="text"
+                label="Nombres"
                 autoComplete="given-name"
+                placeholder="Valentina"
+                leading={<User className="w-4 h-4" />}
                 required
                 aria-required="true"
-                aria-invalid={!!fieldErrors.firstName}
-                aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined}
+                announceError
+                disabled={isSubmitting}
                 value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
+                error={fieldErrors.firstName}
+                onChange={(e) => update('firstName', e.target.value)}
               />
-              {fieldErrors.firstName && (
-                <p id="firstName-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
-                  {fieldErrors.firstName}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="lastName" className="block text-sm font-semibold text-surface-text mb-1">
-                Apellidos <span className="text-red-700" aria-hidden="true">*</span>
-              </label>
-              <input
+              <TextField
                 id="lastName"
                 name="lastName"
-                type="text"
+                label="Apellidos"
                 autoComplete="family-name"
+                placeholder="Ramos Morales"
+                leading={<User className="w-4 h-4" />}
                 required
                 aria-required="true"
-                aria-invalid={!!fieldErrors.lastName}
-                aria-describedby={fieldErrors.lastName ? 'lastName-error' : undefined}
+                announceError
+                disabled={isSubmitting}
                 value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
+                error={fieldErrors.lastName}
+                onChange={(e) => update('lastName', e.target.value)}
               />
-              {fieldErrors.lastName && (
-                <p id="lastName-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
-                  {fieldErrors.lastName}
-                </p>
-              )}
             </div>
-          </div>
 
-          {/* Nombre de usuario */}
-          <div>
-            <label htmlFor="username" className="block text-sm font-semibold text-surface-text mb-1">
-              Nombre de usuario <span className="text-red-700" aria-hidden="true">*</span>
-            </label>
-            <input
+            <TextField
               id="username"
               name="username"
-              type="text"
+              label="Nombre de usuario"
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="valentinaramos"
+              leading={<span className="font-mono text-sm">@</span>}
+              className="[&_input]:font-mono"
               required
               aria-required="true"
-              aria-invalid={!!fieldErrors.username}
-              aria-describedby={
-                fieldErrors.username
-                  ? 'username-error'
-                  : usernameNotice
-                  ? 'username-notice'
-                  : 'username-hint'
-              }
+              announceError
+              disabled={isSubmitting}
               value={formData.username}
+              error={fieldErrors.username}
+              help={checkingUsername ? 'Comprobando disponibilidad...' : 'De 3 a 20 caracteres: letras sin tilde, números y guion bajo.'}
+              labelAside={
+                usernameAvailable && !fieldErrors.username ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span>Disponible</span>
+                  </span>
+                ) : undefined
+              }
               onBlur={handleBlurUsername}
               onChange={(e) => {
-                setUsernameNotice(null);
-                setFormData({ ...formData, username: e.target.value.toLowerCase() });
+                setUsernameAvailable(false);
+                update('username', e.target.value.toLowerCase());
               }}
-              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
             />
-            <p id="username-hint" className="mt-1 text-xs text-surface-muted">
-              De 3 a 20 caracteres: letras sin tilde, números y guion bajo.
+            <p role="status" className="sr-only">
+              {usernameAvailable && !fieldErrors.username ? 'Nombre de usuario disponible.' : ''}
             </p>
-            {checkingUsername && (
-              <p className="text-xs text-brand-600 mt-1">Comprobando disponibilidad...</p>
-            )}
-            {usernameNotice && !fieldErrors.username && (
-              <p id="username-notice" className="mt-1 text-xs text-emerald-700 font-medium" role="status">
-                {usernameNotice}
-              </p>
-            )}
-            {fieldErrors.username && (
-              <p id="username-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
-                {fieldErrors.username}
-              </p>
-            )}
-          </div>
 
-          {/* Correo Institucional */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-surface-text mb-1">
-              Correo institucional <span className="text-red-700" aria-hidden="true">*</span>
-            </label>
-            <input
+            <TextField
               id="email"
               name="email"
               type="email"
+              label="Correo institucional (.edu.co)"
               autoComplete="email"
+              placeholder="valentina.estudio@correounivalle.edu.co"
+              leading={<Mail className="w-4 h-4" />}
               required
               aria-required="true"
-              placeholder="nombre.apellido@correounivalle.edu.co"
-              aria-invalid={!!fieldErrors.email}
-              aria-describedby={fieldErrors.email ? 'email-error' : 'email-hint'}
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full min-h-11 px-3 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
-            />
-            <p id="email-hint" className="mt-1 text-xs text-surface-muted">
-              Solo se permiten cuentas institucionales universitarias (@correounivalle.edu.co o .edu.co).
-            </p>
-            {fieldErrors.email && (
-              <p id="email-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
-                {fieldErrors.email}
-              </p>
-            )}
-          </div>
-
-          {/* Contraseña */}
-          <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-surface-text mb-1">
-              Contraseña <span className="text-red-700" aria-hidden="true">*</span>
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                required
-                aria-required="true"
-                aria-invalid={!!fieldErrors.password}
-                aria-describedby={fieldErrors.password ? 'password-error' : 'password-hint'}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full min-h-11 pl-3 pr-24 py-2 rounded-lg border border-surface-control bg-surface-card text-surface-text"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 min-h-9 px-2 text-xs font-semibold text-brand-600 hover:text-brand-700 rounded"
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                aria-pressed={showPassword}
-              >
-                {showPassword ? 'Ocultar' : 'Mostrar'}
-              </button>
-            </div>
-            <p id="password-hint" className="mt-1 text-xs text-surface-muted">
-              Mínimo 8 caracteres, al menos una letra y un número.
-            </p>
-            {fieldErrors.password && (
-              <p id="password-error" className="mt-1 text-xs text-red-700 font-medium" role="alert">
-                {fieldErrors.password}
-              </p>
-            )}
-          </div>
-
-          {/* Selector de Avatar Accesible */}
-          <fieldset className="pt-2">
-            <legend className="text-sm font-semibold text-surface-text mb-2">
-              Elige tu avatar <span className="text-red-700" aria-hidden="true">*</span>
-            </legend>
-            <div className="flex flex-wrap gap-3 items-center">
-              {AVATAR_PRESETS.map((url, index) => {
-                const isSelected = formData.avatarUrl === url;
-                return (
-                  <label
-                    key={url}
-                    className={`cursor-pointer p-1 rounded-full border-2 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-600 has-[:focus-visible]:ring-offset-2 ${
-                      isSelected ? 'border-brand-600 ring-2 ring-brand-100' : 'border-transparent hover:border-surface-border'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="avatarUrl"
-                      value={url}
-                      checked={isSelected}
-                      onChange={() => setFormData({ ...formData, avatarUrl: url })}
-                      className="sr-only"
-                    />
-                    <img
-                      src={url}
-                      alt={`Opción de avatar ${index + 1}`}
-                      className="w-12 h-12 rounded-full bg-brand-50"
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          </fieldset>
-
-          {/* Botón de Enviar */}
-          <div className="pt-4">
-            <button
-              type="submit"
+              announceError
               disabled={isSubmitting}
-              className="w-full min-h-11 flex items-center justify-center px-4 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold transition disabled:opacity-50"
-            >
-              {isSubmitting ? 'Creando cuenta...' : 'Crear mi cuenta'}
-            </button>
-          </div>
-        </form>
+              value={formData.email}
+              error={fieldErrors.email}
+              help="Solo se permiten correos institucionales terminados en .edu.co."
+              onChange={(e) => update('email', e.target.value)}
+            />
 
-        <div className="relative my-6 text-center">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-surface-border" />
+            <TextField
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              label="Contraseña"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              leading={<Lock className="w-4 h-4" />}
+              required
+              aria-required="true"
+              announceError
+              disabled={isSubmitting}
+              value={formData.password}
+              error={fieldErrors.password}
+              help="Mínimo 8 caracteres, con al menos una letra y un número."
+              onChange={(e) => update('password', e.target.value)}
+              trailing={<PasswordToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />}
+            />
+
+            <div>
+              <label className="min-h-11 flex items-start gap-3 p-2 rounded-xl cursor-pointer text-sm mt-3 text-slate-700 select-none">
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  disabled={isSubmitting}
+                  aria-invalid={fieldErrors.terms ? true : undefined}
+                  aria-describedby={fieldErrors.terms ? 'terms-error' : undefined}
+                  onChange={(e) => {
+                    setAgreeTerms(e.target.checked);
+                    if (e.target.checked) setFieldErrors((prev) => ({ ...prev, terms: undefined }));
+                  }}
+                  className="w-4 h-4 rounded border-slate-500 text-indigo-600 mt-0.5 shrink-0 cursor-pointer"
+                />
+                <span className="[text-wrap:pretty] leading-snug">Acepto las normas de respeto y convivencia en las salas colaborativas.</span>
+              </label>
+              {fieldErrors.terms && (
+                <p id="terms-error" role="alert" className="text-xs text-rose-700 font-medium pl-2">
+                  {fieldErrors.terms}
+                </p>
+              )}
+            </div>
+
+            <Button type="submit" loading={isSubmitting} loadingText="Creando cuenta..." className="!w-full mt-4">
+              Crear cuenta
+            </Button>
+          </form>
+
+          <div className="mt-5 pt-4 border-t border-slate-200 text-center">
+            <Link to="/" className="min-h-11 inline-flex items-center justify-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+              <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>Cancelar y volver al inicio</span>
+            </Link>
           </div>
-          <span className="relative bg-surface-card px-3 text-xs text-surface-muted uppercase font-semibold">
-            O continúa con
-          </span>
         </div>
-
-        {/* Botón Google */}
-        <button
-          type="button"
-          onClick={handleGoogleSignup}
-          disabled={isSubmitting}
-          className="w-full min-h-11 flex items-center justify-center gap-3 px-4 rounded-lg border border-surface-control hover:bg-brand-50 transition font-medium text-surface-text"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="#4285F4"
-              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.17 0 9.99 0 12s.45 3.83 1.25 5.42l4.03-3.15z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-            />
-          </svg>
-          <span>Continuar con Google</span>
-        </button>
-
-        {/* Mensaje de advertencia institucional visible */}
-        <p className="mt-2 text-xs text-center text-surface-muted bg-brand-50 border border-brand-100 p-2 rounded-lg">
-          🔒 <strong>Nota:</strong> Solo se permite el acceso con cuentas terminadas en <strong>.edu.co</strong>. Las cuentas personales de Gmail serán rechazadas.
-        </p>
-
-        <p className="mt-6 text-center text-sm text-surface-muted">
-          ¿Ya tienes una cuenta?{' '}
-          <Link to="/ingreso" className="text-brand-600 font-semibold hover:underline">
-            Inicia sesión aquí
-          </Link>
-        </p>
       </div>
     </div>
   );

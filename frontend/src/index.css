@@ -3,13 +3,19 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    /* El encabezado fijo y la barra inferior móvil nunca tapan el elemento enfocado (WCAG 2.4.11). */
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: 6rem;
+  }
   body {
-    @apply font-sans text-surface-text bg-surface-bg;
+    @apply font-sans antialiased text-slate-800 bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900;
   }
 
   /* Indicador de foco de la guía visual: contorno de 3 px primario con 2 px de separación */
   :focus-visible {
-    outline: 3px solid #3730A3;
+    outline: 3px solid #4F39F6;
     outline-offset: 2px;
   }
 }

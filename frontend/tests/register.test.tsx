@@ -29,6 +29,7 @@ async function fillForm(email = 'ana@correounivalle.edu.co', password = 'Prueba1
   await user.type(screen.getByLabelText(/^Nombre de usuario/), 'ana_qa');
   await user.type(screen.getByLabelText(/^Correo institucional/), email);
   await user.type(screen.getByLabelText(/^Contraseña/, { selector: 'input' }), password);
+  await user.click(screen.getByRole('checkbox', { name: /Acepto las normas/ }));
   return user;
 }
 
@@ -50,13 +51,13 @@ describe('PI-277 | registro manual (pruebas de componente)', () => {
     } });
     renderRegister();
     const user = await fillForm();
-    await user.click(screen.getByRole('radio', { name: 'Opción de avatar 2' }));
-    await user.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
+    await user.click(screen.getByRole('radio', { name: 'Zorrito' }));
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(await screen.findByRole('heading', { name: 'Panel de estudio' })).toBeInTheDocument();
     expect(authApi.register).toHaveBeenCalledExactlyOnceWith({
       firstName: 'Ana', lastName: 'Pérez', username: 'ana_qa',
       email: 'ana@correounivalle.edu.co', password: 'Prueba123',
-      avatarUrl: 'https://api.dicebear.com/9.x/bottts/svg?seed=Aria',
+      avatarUrl: 'https://miniproyecto-2-inky.vercel.app/avatars/zorrito.jpg',
     });
     expect(mocks.signIn).toHaveBeenCalledWith({}, 'ana@correounivalle.edu.co', 'Prueba123');
     expect(mocks.refreshProfile).toHaveBeenCalledOnce();
@@ -69,22 +70,23 @@ describe('PI-277 | registro manual (pruebas de componente)', () => {
     vi.mocked(authApi.register).mockRejectedValue(new ApiError(409, code, 'Revisa el formulario.', [{ field, message }]));
     renderRegister();
     const user = await fillForm();
-    await user.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     await waitFor(() => expect(screen.getByLabelText(new RegExp(`^${label}`))).toHaveAccessibleDescription(message));
     expect(screen.getByLabelText(/^Nombres/)).toHaveValue('Ana');
     expect(screen.getByLabelText(/^Apellidos/)).toHaveValue('Pérez');
     expect(screen.getByLabelText(/^Nombre de usuario/)).toHaveValue('ana_qa');
     expect(screen.getByLabelText(/^Correo institucional/)).toHaveValue('ana@correounivalle.edu.co');
     expect(screen.getByLabelText(/^Contraseña/, { selector: 'input' })).toHaveValue('Prueba123');
-    expect(screen.getByRole('link', { name: 'Inicia sesión aquí' })).toHaveAttribute('href', '/ingreso');
+    expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/ingreso');
     expect(mocks.signIn).not.toHaveBeenCalled();
     expect(mocks.refreshProfile).not.toHaveBeenCalled();
   });
 
-  it('E4: campos vacíos muestran cinco errores anunciables y no registran', async () => {
+  it('E4: campos vacíos y normas sin aceptar muestran seis errores anunciables y no registran', async () => {
     renderRegister();
-    await userEvent.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
-    expect(screen.getAllByRole('alert')).toHaveLength(5);
+    await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    expect(screen.getAllByRole('alert')).toHaveLength(6);
+    expect(screen.getByRole('checkbox', { name: /Acepto las normas/ })).toHaveAccessibleDescription(/normas de convivencia/);
     for (const label of [/^Nombres/, /^Apellidos/, /^Nombre de usuario/, /^Correo institucional/, /^Contraseña/]) {
       expect(screen.getByLabelText(label, { selector: 'input' })).toHaveAttribute('aria-invalid', 'true');
       expect(screen.getByLabelText(label, { selector: 'input' })).toHaveAccessibleDescription();
@@ -95,7 +97,7 @@ describe('PI-277 | registro manual (pruebas de componente)', () => {
   it.each(['Abc1234', 'abcdefgh', '12345678'])('E4: contraseña inválida %s impide registrar', async password => {
     renderRegister();
     const user = await fillForm('ana@correounivalle.edu.co', password);
-    await user.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(screen.getByLabelText(/^Contraseña/, { selector: 'input' })).toHaveAttribute('aria-invalid', 'true');
     expect(authApi.register).not.toHaveBeenCalled();
   });
@@ -103,7 +105,7 @@ describe('PI-277 | registro manual (pruebas de componente)', () => {
   it('E4: correo sin arroba no debe enviarse a la API (regresión QA-01)', async () => {
     renderRegister();
     const user = await fillForm('invalido.edu.co');
-    await user.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(authApi.register).not.toHaveBeenCalled();
     expect(screen.getByLabelText(/^Correo institucional/)).toHaveAttribute('aria-invalid', 'true');
   });
@@ -113,29 +115,37 @@ describe('PI-277 | registro manual (pruebas de componente)', () => {
     vi.mocked(authApi.register).mockImplementation(() => new Promise((_resolve, reject) => { rejectRequest = reject; }));
     renderRegister();
     const user = await fillForm();
-    await user.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(screen.getByRole('button', { name: 'Creando cuenta...' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Creando cuenta...' }));
     expect(authApi.register).toHaveBeenCalledOnce();
     rejectRequest(new Error('Sin conexión'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Intenta de nuevo');
-    expect(screen.getByRole('button', { name: 'Crear mi cuenta' })).toBeEnabled();
-    await user.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
+    expect(screen.getByRole('button', { name: 'Crear cuenta' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(authApi.register).toHaveBeenCalledTimes(2);
   });
 });
 
 describe('PI-278 | accesibilidad automatizada parcial', () => {
-  it('recorre los campos por teclado y permite mostrar/ocultar la contraseña', async () => {
+  it('recorre el formulario por teclado en el orden del prototipo y permite mostrar/ocultar la contraseña', async () => {
     renderRegister();
     const user = userEvent.setup();
-    for (const label of [/^Nombres/, /^Apellidos/, /^Nombre de usuario/, /^Correo institucional/, /^Contraseña/]) {
+    const expectNext = async (element: HTMLElement) => {
       await user.tab();
-      expect(screen.getByLabelText(label, { selector: 'input' })).toHaveFocus();
+      expect(element).toHaveFocus();
+    };
+    await expectNext(screen.getByRole('link', { name: 'Volver al inicio' }));
+    await expectNext(screen.getByRole('link', { name: 'Iniciar sesión' }));
+    await expectNext(screen.getByRole('button', { name: 'Continuar con Google' }));
+    await expectNext(screen.getByRole('radio', { name: 'Búho Sabio' }));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: 'Zorrito' })).toBeChecked();
+    for (const label of [/^Nombres/, /^Apellidos/, /^Nombre de usuario/, /^Correo institucional/, /^Contraseña/]) {
+      await expectNext(screen.getByLabelText(label, { selector: 'input' }));
     }
-    await user.tab();
     const showPassword = screen.getByRole('button', { name: 'Mostrar contraseña' });
-    expect(showPassword).toHaveFocus();
+    await expectNext(showPassword);
     expect(showPassword).toHaveTextContent('Mostrar');
     expect(showPassword).toHaveAttribute('aria-pressed', 'false');
     await user.keyboard('{Enter}');
@@ -144,12 +154,9 @@ describe('PI-278 | accesibilidad automatizada parcial', () => {
     await user.keyboard('{Enter}');
     expect(screen.getByLabelText(/^Contraseña/, { selector: 'input' })).toHaveAttribute('type', 'password');
     expect(screen.getByRole('button', { name: 'Mostrar contraseña' })).toHaveAttribute('aria-pressed', 'false');
-    await user.tab();
-    expect(screen.getByRole('radio', { name: 'Opción de avatar 1' })).toHaveFocus();
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByRole('radio', { name: 'Opción de avatar 2' })).toBeChecked();
-    await user.tab();
-    expect(screen.getByRole('button', { name: 'Crear mi cuenta' })).toHaveFocus();
+    await expectNext(screen.getByRole('checkbox', { name: /Acepto las normas/ }));
+    await expectNext(screen.getByRole('button', { name: 'Crear cuenta' }));
+    await expectNext(screen.getByRole('link', { name: 'Cancelar y volver al inicio' }));
   });
 
   it('QA-02: no desactiva el foco visible de campos ni avatares', () => {
@@ -159,7 +166,7 @@ describe('PI-278 | accesibilidad automatizada parcial', () => {
       expect(input.className).not.toContain('focus-visible:outline-none');
       expect(input.className).not.toContain('focus-visible:ring-0');
     }
-    const radio = screen.getByRole('radio', { name: 'Opción de avatar 1' });
+    const radio = screen.getByRole('radio', { name: 'Búho Sabio' });
     expect(radio.closest('label')?.className).toContain('has-[:focus-visible]:ring-2');
   });
 
@@ -177,7 +184,7 @@ describe('PI-278 | accesibilidad automatizada parcial', () => {
 
   it.each([false, true])('axe sin violaciones estructurales, errores visibles: %s', async showErrors => {
     const { container } = renderRegister();
-    if (showErrors) await userEvent.click(screen.getByRole('button', { name: 'Crear mi cuenta' }));
+    if (showErrors) await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     const result = await axe.run(container, {
       runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] },
       // JSDOM no calcula contraste/layout; se auditan en navegador publicado.

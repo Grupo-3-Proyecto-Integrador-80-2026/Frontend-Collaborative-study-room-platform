@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('../src/config/firebase', () => ({ auth: mocks.auth, googleProvider: {} }));
 vi.mock('firebase/auth', () => ({
+  setPersistence: vi.fn(async () => undefined), sendPasswordResetEmail: vi.fn(async () => undefined),
+  browserLocalPersistence: {}, browserSessionPersistence: {},
   onAuthStateChanged: (_auth: unknown, listener: typeof mocks.listener) => {
     mocks.listener = listener;
     void listener?.(mocks.auth.currentUser);
@@ -74,7 +76,7 @@ beforeEach(() => {
 describe('US-02 | E1/E3 | sesión y rutas privadas', () => {
   it.each(['/panel', '/otra-privada'])('obliga a elegir username al abrir %s sin perfil', async path => {
     renderFlow(path);
-    expect(await screen.findByRole('heading', { name: 'Completa tu perfil' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Finalizar perfil con Google' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /privad/ })).not.toBeInTheDocument();
   });
 
@@ -91,7 +93,7 @@ describe('US-02 | E1/E3 | sesión y rutas privadas', () => {
   it('QA-01: un perfil devuelto sin username tampoco permite entrar', async () => {
     vi.mocked(authApi.getMyProfile).mockResolvedValue({ success: true, user: { ...profile, username: '' } });
     renderFlow();
-    expect(await screen.findByRole('heading', { name: 'Completa tu perfil' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Finalizar perfil con Google' })).toBeInTheDocument();
   });
 
   it('QA-01: muestra carga durante la consulta inicial', async () => {
@@ -112,7 +114,7 @@ describe('US-02 | E1/E3 | sesión y rutas privadas', () => {
       mocks.auth.currentUser = { ...googleUser, uid: 'segunda-cuenta' } as User;
       await mocks.listener?.(mocks.auth.currentUser);
     });
-    expect(await screen.findByRole('heading', { name: 'Completa tu perfil' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Finalizar perfil con Google' })).toBeInTheDocument();
     await act(async () => resolveOld({ success: true, user: profile }));
     expect(screen.queryByRole('heading', { name: 'Panel privado' })).not.toBeInTheDocument();
   });
@@ -188,7 +190,7 @@ describe('US-02 | E2/E4 | completar perfil', () => {
 
   it('permite cancelar el alta y cierra la sesión', async () => {
     renderFlow();
-    await userEvent.click(await screen.findByRole('button', { name: 'Cancelar y salir de esta cuenta' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Usar otra cuenta' }));
     expect(mocks.signOut).toHaveBeenCalledOnce();
     expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
   });
@@ -205,7 +207,7 @@ describe.each(['/ingreso', '/registro'])('US-02 | Google desde %s', path => {
     });
     renderFlow(path);
     await userEvent.click(await screen.findByRole('button', { name: 'Continuar con Google' }));
-    expect(await screen.findByRole('heading', { name: 'Completa tu perfil' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Finalizar perfil con Google' })).toBeInTheDocument();
     expect(screen.getByText(/ana@example.edu.co/)).toBeInTheDocument();
   });
 
