@@ -7,7 +7,7 @@ interface FirestoreHealthData {
   timestamp?: string;
 }
 
-export default function Home() {
+export default function ConnectionStatus() {
   const [data, setData] = useState<FirestoreHealthData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +57,10 @@ export default function Home() {
   }, [fetchFirestoreCheck]);
 
   return (
-    <section aria-labelledby="home-title" className="space-y-6">
+    <section aria-labelledby="home-title" className="space-y-6 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div className="bg-surface-card p-6 rounded-lg shadow-sm border border-surface-border">
         <h1 id="home-title" className="text-2xl font-bold text-surface-text">
-          Sprint 0: Base Técnica End-to-End
+          Estado de la conexión
         </h1>
         <p className="mt-2 text-surface-muted">
           Esta vista verifica la conexión síncrona desacoplada de la plataforma: <br />
