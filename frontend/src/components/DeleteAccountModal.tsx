@@ -70,7 +70,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
           </li>
           <li>
             <strong>Liberación de tu nombre de usuario:</strong>{' '}
-            <span className="font-mono text-rose-800 font-semibold break-all">@{username}</span> quedará disponible para que otro estudiante pueda usarlo.
+            <span className="font-mono text-rose-800 font-semibold break-words">@{username}</span> quedará disponible para que otro estudiante pueda usarlo.
           </li>
           <li>
             <strong>Salas y mensajes:</strong> las salas donde eres Administrador se eliminarán con todos sus mensajes, incluidos los de otros participantes. Tus mensajes en otras salas también se eliminarán.
