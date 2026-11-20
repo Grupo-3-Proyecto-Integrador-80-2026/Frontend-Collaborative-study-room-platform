@@ -10,6 +10,7 @@ import ChooseUsername from './pages/ChooseUsername';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import Room from './pages/Room';
 import NotFound from './pages/NotFound';
 
 const APP_NAME = 'Salón de Estudio Colaborativo';
@@ -31,7 +32,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [logoutError, setLogoutError] = React.useState(false);
 
-  const currentPage = PAGE_TITLES[location.pathname] || 'Página no encontrada';
+  const currentPage =
+    PAGE_TITLES[location.pathname] ||
+    (/^\/salas\/[^/]+$/.test(location.pathname) ? 'Sala' : 'Página no encontrada');
 
   React.useEffect(() => {
     document.title = `${currentPage} · ${APP_NAME}`;
@@ -86,7 +89,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       to="/panel"
                       aria-current={location.pathname === '/panel' ? 'page' : undefined}
                       className={`inline-flex min-h-11 items-center px-3 rounded-lg ${
-                        location.pathname === '/panel' ? 'text-brand-600 font-semibold underline underline-offset-8' : 'text-surface-muted hover:text-brand-600'
+                        location.pathname === '/panel' || location.pathname.startsWith('/salas/') ? 'text-brand-600 font-semibold underline underline-offset-8' : 'text-surface-muted hover:text-brand-600'
                       }`}
                     >
                       Panel
@@ -225,6 +228,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/salas/:id"
+              element={
+                <ProtectedRoute>
+                  <Room />
                 </ProtectedRoute>
               }
             />
