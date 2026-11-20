@@ -218,7 +218,7 @@ export default function Home() {
               placeholder="Buscar por materia, tema o facultad (ej. Cálculo, Física, Algoritmos)..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full min-h-12 pl-11 pr-4 py-3 text-base sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white transition-all"
+              className="w-full min-h-12 pl-11 pr-4 py-3 text-base sm:text-sm bg-slate-50 border border-slate-500 rounded-xl focus:bg-white transition-all"
             />
           </div>
 

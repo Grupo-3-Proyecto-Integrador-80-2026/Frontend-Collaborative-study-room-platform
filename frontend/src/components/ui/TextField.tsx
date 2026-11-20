@@ -47,8 +47,8 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
             aria-describedby={describedBy}
             className={`w-full min-h-12 ${leading ? 'pl-10' : 'pl-3.5'} ${trailing ? 'pr-28' : 'pr-3.5'} py-2.5 text-base sm:text-sm rounded-xl transition-colors disabled:opacity-70 ${
               error
-                ? 'bg-rose-50/50 border border-rose-500 text-rose-900'
-                : 'bg-slate-50 border border-slate-300 focus:bg-white text-slate-900'
+                ? 'bg-rose-50/50 border border-rose-600 text-rose-900'
+                : 'bg-slate-50 border border-slate-500 focus:bg-white text-slate-900'
             }`}
             {...rest}
           />

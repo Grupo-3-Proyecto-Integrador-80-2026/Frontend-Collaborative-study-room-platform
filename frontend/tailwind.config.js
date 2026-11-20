@@ -37,13 +37,15 @@ export default {
         amber,
         // Alias usados por las pantallas del Sprint 0–1; apuntan a la misma paleta.
         brand: { 50: indigo[50], 100: indigo[100], 600: indigo[600], 700: indigo[700], 900: indigo[900] },
+        // Bordes de campos, buscador y casillas: slate-500 (≥ 4,5:1 sobre blanco y slate-50),
+        // por encima del 3:1 que exige WCAG 2.2 · 1.4.11 para identificar controles.
         surface: {
           bg: slate[50],
           card: '#FFFFFF',
           text: slate[900],
           muted: slate[600],
           border: slate[200],
-          control: slate[400],
+          control: slate[500],
         },
       },
     },

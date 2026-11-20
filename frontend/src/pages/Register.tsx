@@ -367,7 +367,7 @@ export default function Register() {
                     setAgreeTerms(e.target.checked);
                     if (e.target.checked) setFieldErrors((prev) => ({ ...prev, terms: undefined }));
                   }}
-                  className="w-4 h-4 rounded border-slate-400 text-indigo-600 mt-0.5 shrink-0 cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-500 text-indigo-600 mt-0.5 shrink-0 cursor-pointer"
                 />
                 <span className="[text-wrap:pretty] leading-snug">Acepto las normas de respeto y convivencia en las salas colaborativas.</span>
               </label>

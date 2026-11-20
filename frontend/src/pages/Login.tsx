@@ -222,7 +222,7 @@ export default function Login() {
                   checked={rememberMe}
                   disabled={isSubmitting}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-400 text-indigo-600"
+                  className="w-4 h-4 rounded border-slate-500 text-indigo-600"
                 />
                 <span>Recordar sesión</span>
               </label>
