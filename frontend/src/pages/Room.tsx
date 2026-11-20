@@ -106,13 +106,13 @@ export default function Room() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Link to="/panel" className={`${backLink} self-start`}>
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Volver al panel</span>
+          <span>Salir de la sala</span>
         </Link>
         <nav aria-label="Ruta de navegación" className="text-xs text-slate-600 min-w-0">
           <ol className="flex items-center gap-2">
             <li>
               <Link to="/panel" className="hover:text-indigo-700 underline-offset-2 hover:underline">
-                Panel de Salas
+                Panel
               </Link>
             </li>
             <li aria-hidden="true">/</li>
@@ -131,7 +131,7 @@ export default function Room() {
           className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-2.5 text-sm text-emerald-800 font-medium"
         >
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden="true" />
-          <span>Sala «{room.name}» creada. Eres el Administrador: comparte el ID para que tus compañeros puedan unirse.</span>
+          <span>Sala «{room.name}» creada. Eres el anfitrión: comparte el ID de la sala para que tus compañeros puedan unirse.</span>
         </div>
       )}
 
@@ -142,7 +142,7 @@ export default function Room() {
               <span className="font-semibold text-indigo-700">Sala creada · En espera</span>
               <span aria-hidden="true">·</span>
               <span>
-                Tu rol: <strong className="text-slate-900">Administrador</strong>
+                Tu rol: <strong className="text-slate-900">Anfitrión</strong>
               </span>
             </div>
             <h1 id="room-title" className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight [text-wrap:pretty] break-words">
@@ -198,7 +198,7 @@ export default function Room() {
             <div className="flex items-center gap-2.5 mb-2">
               <FileText className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />
               <h2 id="room-base" className="text-base font-bold text-slate-900">
-                Espacio base de la sala
+                Próximamente en esta sala
               </h2>
             </div>
             <p className="text-sm text-slate-600 [text-wrap:pretty]">
@@ -224,7 +224,7 @@ export default function Room() {
                 )}
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 break-words">{fullName} (tú)</p>
-                  <p className="text-xs text-slate-600 break-words">@{profile?.username} · Administrador</p>
+                  <p className="text-xs text-slate-600 break-words">@{profile?.username} · Anfitrión</p>
                 </div>
               </div>
               <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />

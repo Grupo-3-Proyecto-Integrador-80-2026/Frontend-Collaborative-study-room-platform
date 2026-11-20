@@ -48,7 +48,7 @@ export default function Dashboard() {
     setReloadKey((key) => key + 1);
   };
 
-  // US-06 E1: al crear, se entra a la sala como Administrador.
+  // US-06 E1: al crear, se entra a la sala como anfitrión.
   const handleCreated = (room: Room) => {
     setShowCreateModal(false);
     setRooms((prev) => [room, ...prev]);
@@ -85,7 +85,7 @@ export default function Dashboard() {
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-1">Panel de Salas</p>
+              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-1">Panel</p>
               <h1 id="dashboard-title" className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight [text-wrap:pretty] break-words">
                 ¡Hola, {firstName}!
               </h1>
@@ -99,7 +99,7 @@ export default function Dashboard() {
             </Button>
             <Link to="/perfil" className={`${linkButton} bg-white border border-slate-300 hover:bg-slate-50 text-slate-700`}>
               <UserIcon className="w-4 h-4 text-slate-500" aria-hidden="true" />
-              <span>Mi Perfil</span>
+              <span>Mi perfil</span>
             </Link>
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function Dashboard() {
                     >
                       <div>
                         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600 mb-2">
-                          <span className="font-semibold text-indigo-700">Administrador</span>
+                          <span className="font-semibold text-indigo-700">Anfitrión</span>
                           <span aria-hidden="true">·</span>
                           <span>{formatRoomDate(room.createdAt)}</span>
                         </div>
@@ -215,7 +215,7 @@ export default function Dashboard() {
                           aria-label={`Entrar a la sala ${room.name}`}
                           className="flex-1 min-h-11 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap"
                         >
-                          <span>Entrar</span>
+                          <span>Entrar a la sala</span>
                           <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
                         </Link>
                       </div>

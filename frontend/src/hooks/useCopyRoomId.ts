@@ -17,7 +17,7 @@ export function useCopyRoomId() {
       if (!navigator.clipboard?.writeText) throw new Error('clipboard-unavailable');
       await navigator.clipboard.writeText(roomId);
       setCopiedId(roomId);
-      setToast({ tone: 'success', text: `ID de sala copiado al portapapeles (${roomId})` });
+      setToast({ tone: 'success', text: `ID de la sala copiado al portapapeles (${roomId})` });
       timers.current.push(window.setTimeout(() => setCopiedId(null), 2000));
     } catch {
       setCopiedId(null);

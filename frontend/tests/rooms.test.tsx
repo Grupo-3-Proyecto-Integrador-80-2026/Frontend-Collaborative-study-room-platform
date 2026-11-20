@@ -118,7 +118,7 @@ describe('US-06 | E1 y E3 | crear sala', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('crea la sala y entra a ella como Administrador', async () => {
+  it('crea la sala y entra a ella como anfitrión', async () => {
     const user = userEvent.setup();
     const created: RoomData = { id: 'CCCCCCCCCCCCCCCCCCC3', ownerId: 'salas-qa', name: 'Álgebra', createdAt: new Date().toISOString() };
     const create = vi.spyOn(roomsApi, 'create').mockResolvedValue({ success: true, room: created });
@@ -127,7 +127,7 @@ describe('US-06 | E1 y E3 | crear sala', () => {
 
     expect(create).toHaveBeenCalledWith('Álgebra');
     expect(await screen.findByRole('heading', { level: 1, name: 'Álgebra' })).toBeInTheDocument();
-    expect(screen.getByText(/Tu rol:/)).toHaveTextContent('Tu rol: Administrador');
+    expect(screen.getByText(/Tu rol:/)).toHaveTextContent('Tu rol: Anfitrión');
     const confirmation = screen.getByText(/Sala «Álgebra» creada/).closest('[role="status"]');
     expect(confirmation).toHaveFocus();
     expect(screen.getAllByText(created.id).length).toBeGreaterThan(0);
@@ -163,7 +163,7 @@ describe('US-06 | E4 | copiar el ID', () => {
     expect(write).toHaveBeenCalledWith(newer.id);
     expect(await navigator.clipboard.readText()).toBe(newer.id);
     expect(screen.getByRole('button', { name: 'Copiar ID de la sala Cálculo · Taller 3' })).toHaveTextContent('Copiado');
-    const toast = screen.getByText(`ID de sala copiado al portapapeles (${newer.id})`);
+    const toast = screen.getByText(`ID de la sala copiado al portapapeles (${newer.id})`);
     expect(toast.closest('[aria-live="polite"]')).toBeInTheDocument();
   });
 
