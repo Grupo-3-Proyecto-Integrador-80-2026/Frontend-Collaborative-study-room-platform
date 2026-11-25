@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowRight, Check, Compass, Copy, Plus, RefreshCw, Sparkles, User as UserIcon, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { roomsApi, type Room } from '../services/api';
 import { useCopyRoomId } from '../hooks/useCopyRoomId';
 import { formatRoomDate } from '../utils/formatDate';
-import { CreateRoomModal } from '../components/CreateRoomModal';
+import { RoomNameModal } from '../components/RoomNameModal';
+import { RoomActions } from '../components/RoomActions';
+import { Alert } from '../components/ui/Alert';
+import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { Toast } from '../components/ui/Toast';
 import { ErrorBanner, LoadingBanner } from '../components/ui/StatusBanner';
@@ -18,13 +21,24 @@ const linkButton =
   'w-full sm:w-auto min-h-12 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap';
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, firebaseUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [deletedByHost, setDeletedByHost] = useState<string | undefined>(location.state?.deletedByHost);
+  const [notice, setNotice] = useState<string | undefined>(location.state?.roomNotice);
+  const panelAction = useRef<HTMLButtonElement>(null);
+  const roomsTitle = useRef<HTMLHeadingElement>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [reloadKey, setReloadKey] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { copiedId, toast, copy } = useCopyRoomId();
+
+  useEffect(() => {
+    if (location.state?.deletedByHost || location.state?.roomNotice) {
+      navigate('/panel', { replace: true, state: null });
+    }
+  }, [location.state, navigate]);
 
   useEffect(() => {
     let active = true;
@@ -52,7 +66,7 @@ export default function Dashboard() {
   const handleCreated = (room: Room) => {
     setShowCreateModal(false);
     setRooms((prev) => [room, ...prev]);
-    navigate(`/salas/${room.id}`, { state: { room, justCreated: true } });
+    navigate(`/salas/${room.id}`, { state: { justCreated: true } });
   };
 
   const firstName = profile?.firstName || 'Estudiante';
@@ -60,6 +74,14 @@ export default function Dashboard() {
   return (
     <div className="w-full">
       <Toast message={toast} />
+      {notice && <Alert tone="success" className="mb-4" onDismiss={() => setNotice(undefined)}>{notice}</Alert>}
+      {deletedByHost && <Modal isOpen role="alertdialog" initialFocusRef={panelAction}
+        onClose={() => { setDeletedByHost(undefined); roomsTitle.current?.focus(); }}
+        titleId="deleted-title" title={`El anfitrión eliminó la sala «${deletedByHost}»`}
+        descriptionId="deleted-description" description="Ya no puedes enviar mensajes aquí."
+        closeLabel="Cerrar aviso">
+        <Button ref={panelAction} onClick={() => { setDeletedByHost(undefined); roomsTitle.current?.focus(); }}>Ir al Panel</Button>
+      </Modal>}
 
       {loadState === 'loading' && <LoadingBanner>Cargando tus salas de estudio...</LoadingBanner>}
       {loadState === 'error' && (
@@ -109,7 +131,7 @@ export default function Dashboard() {
         <section aria-labelledby="rooms-title" aria-busy={loadState === 'loading'} className="lg:col-span-8 space-y-6 w-full">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 id="rooms-title" className="text-lg sm:text-xl font-bold text-slate-900">
+              <h2 id="rooms-title" ref={roomsTitle} tabIndex={-1} className="text-lg sm:text-xl font-bold text-slate-900">
                 Mis salas de estudio
               </h2>
               <p className="text-sm text-slate-600 mt-0.5">Crea una sala, copia su ID único para compartir o entra directamente.</p>
@@ -182,7 +204,7 @@ export default function Dashboard() {
                     >
                       <div>
                         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600 mb-2">
-                          <span className="font-semibold text-indigo-700">Anfitrión</span>
+                          <span className="font-semibold text-indigo-700">{room.ownerId === firebaseUser?.uid ? 'Anfitrión' : 'Participante'}</span>
                           <span aria-hidden="true">·</span>
                           <span>{formatRoomDate(room.createdAt)}</span>
                         </div>
@@ -211,7 +233,6 @@ export default function Dashboard() {
                         </button>
                         <Link
                           to={`/salas/${room.id}`}
-                          state={{ room }}
                           aria-label={`Entrar a la sala ${room.name}`}
                           className="flex-1 min-h-11 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap"
                         >
@@ -219,6 +240,16 @@ export default function Dashboard() {
                           <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
                         </Link>
                       </div>
+                      {room.ownerId === firebaseUser?.uid && <RoomActions room={room}
+                        onRenamed={(name) => {
+                          setRooms((prev) => prev.map((item) => item.id === room.id ? { ...item, name } : item));
+                          setNotice(`Nombre actualizado: «${name}».`);
+                        }}
+                        onDeleted={() => {
+                          setRooms((prev) => prev.filter((item) => item.id !== room.id));
+                          setNotice(`Sala «${room.name}» eliminada.`);
+                          roomsTitle.current?.focus();
+                        }} />}
                     </article>
                   </li>
                 );
@@ -240,7 +271,7 @@ export default function Dashboard() {
         </aside>
       </div>
 
-      <CreateRoomModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />
+      <RoomNameModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />
     </div>
   );
 }

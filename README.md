@@ -36,10 +36,22 @@ Define los valores necesarios dentro de tu archivo `.env`:
 ```env
 # URL de la API REST desplegada en Render (o local si estás desarrollando)
 VITE_API_URL=https://tu-backend-api.onrender.com
+VITE_REALTIME_URL=https://tu-backend-realtime.onrender.com
 
 # Entorno de ejecución
 VITE_APP_ENV=development
 ```
+
+### Comprobar US-07 en la aplicación publicada
+
+Configura ambas URLs en Vercel antes de compilar. El servicio de tiempo real debe permitir el origen del frontend (`FRONTEND_ORIGIN`).
+
+1. Con una cuenta anfitriona, abre una sala desde el panel. Abre `/salas/<id>` en otra sesión autenticada con una cuenta invitada.
+2. Desde **Acciones de la sala → Editar nombre**, intenta guardar solo espacios. Luego guarda un nombre válido. Comprueba el título en las dos sesiones y la tarjeta del panel al volver.
+3. En el panel, abre **Eliminar** y cancela con `Esc`: la tarjeta debe seguir ahí y el foco volver al botón. Repite y confirma. Si era la última sala, el panel debe quedar vacío.
+4. En la sesión invitada, verifica que no aparezcan acciones de edición o eliminación. Tras la eliminación debe volver al panel con el aviso del anfitrión. Una sesión en otra sala no debe recibirlo.
+
+Para el DUE, captura el error de validación y el resultado en ambas sesiones con la URL de producción visible.
 
 ---
 

@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Clock, Copy, FileText, SearchX, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { roomsApi, type Room as RoomData } from '../services/api';
+import { roomsApi } from '../services/api';
+import { watchRoom } from '../services/roomEvents';
+import { RoomActions } from '../components/RoomActions';
+import { Alert } from '../components/ui/Alert';
 import { useCopyRoomId } from '../hooks/useCopyRoomId';
 import { Button } from '../components/ui/Button';
 import { Toast } from '../components/ui/Toast';
@@ -13,41 +16,67 @@ type LoadState = 'loading' | 'ready' | 'not-found' | 'error';
 const backLink =
   'min-h-11 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:text-indigo-700 rounded-xl transition-colors';
 
-// Vista base de la sala (US-06 E1). El chat y el audio/video llegan en US-09 a US-14.
-// No existe GET /api/rooms/:id: la sala se resuelve entre las salas propias, lo que
-// permite recargar la página o abrir el enlace directamente.
 export default function Room() {
   const { id = '' } = useParams();
-  const location = useLocation();
-  const { profile } = useAuth();
-  const navState = location.state as { room?: RoomData; justCreated?: boolean } | null;
-  const initialRoom = navState?.room?.id === id ? navState.room : null;
+  return <RoomView key={id} id={id} />;
+}
 
-  const [room, setRoom] = useState<RoomData | null>(initialRoom);
-  const [loadState, setLoadState] = useState<LoadState>(initialRoom ? 'ready' : 'loading');
+function RoomView({ id }: { id: string }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, firebaseUser } = useAuth();
+  const [name, setName] = useState('Sala de estudio');
+  const [isHost, setHost] = useState(false);
+  const [liveError, setLiveError] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [loadState, setLoadState] = useState<LoadState>('loading');
   const [reloadKey, setReloadKey] = useState(0);
   const { copiedId, toast, copy } = useCopyRoomId();
   const createdRef = useRef<HTMLDivElement>(null);
-  const justCreated = Boolean(navState?.justCreated && initialRoom);
+  const deletingHere = useRef(false);
+  const justCreated = Boolean(isHost && location.state?.justCreated && !notice);
+  const room = { id, name };
+  const leaveDeleted = (host: boolean) => navigate('/panel', { replace: true,
+    state: host ? { roomNotice: `Sala «${name}» eliminada.` } : { deletedByHost: name } });
+  const onDeletedEvent = useEffectEvent(leaveDeleted);
 
   useEffect(() => {
-    if (initialRoom) return;
+    if (!firebaseUser) return;
     let active = true;
+    let stop: (() => void) | undefined;
     roomsApi
       .listMine()
       .then((res) => {
         if (!active) return;
-        const found = res.rooms.find((r) => r.id === id) ?? null;
-        setRoom(found);
-        setLoadState(found ? 'ready' : 'not-found');
+        // El rol procede de la API autenticada, nunca del estado de navegación.
+        const own = res.rooms.find((r) => r.id === id && r.ownerId === firebaseUser.uid);
+        setHost(Boolean(own));
+        if (own) {
+          setName(own.name);
+          setLoadState('ready');
+        }
+        let admitted = Boolean(own);
+        stop = watchRoom(id, firebaseUser, {
+          joined: () => { admitted = true; setLiveError(false); setLoadState('ready'); },
+          renamed: setName,
+          // El evento bloquea la sala antes de que la API termine de borrar los mensajes.
+          // Quien inició el DELETE espera su 204; los demás salen de inmediato.
+          deleted: () => { if (!deletingHere.current) onDeletedEvent(Boolean(own)); },
+          missing: () => setLoadState('not-found'),
+          unavailable: () => {
+            setLiveError(true);
+            if (!admitted) setLoadState('error');
+          },
+        });
       })
       .catch(() => {
         if (active) setLoadState('error');
       });
     return () => {
       active = false;
+      stop?.();
     };
-  }, [id, initialRoom, reloadKey]);
+  }, [id, firebaseUser, reloadKey]);
 
   // Tras crear la sala, el foco va a la confirmación para que el lector la lea.
   useEffect(() => {
@@ -77,14 +106,14 @@ export default function Room() {
     );
   }
 
-  if (loadState === 'not-found' || !room) {
+  if (loadState === 'not-found') {
     return (
       <section aria-labelledby="room-missing" className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 text-center w-full">
         <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center mx-auto mb-4" aria-hidden="true">
           <SearchX className="w-7 h-7" />
         </div>
         <h1 id="room-missing" className="text-lg font-bold text-slate-900 mb-2">
-          No encontramos esta sala entre tus salas
+          No encontramos esta sala
         </h1>
         <p className="text-sm text-slate-600 max-w-md mx-auto mb-6 [text-wrap:pretty]">
           Revisa el enlace o vuelve al panel para ver las salas que has creado.
@@ -102,6 +131,10 @@ export default function Room() {
   return (
     <div className="w-full">
       <Toast message={toast} />
+      {notice && <Alert tone="success" className="mb-4">{notice}</Alert>}
+      {liveError && <ErrorBanner title="Los avisos en tiempo real no están disponibles." onRetry={retry}>
+        Revisa tu conexión para recibir los cambios de la sala.
+      </ErrorBanner>}
 
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Link to="/panel" className={`${backLink} self-start`}>
@@ -139,17 +172,17 @@ export default function Room() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 mb-2">
-              <span className="font-semibold text-indigo-700">Sala creada · En espera</span>
+              <span className="font-semibold text-indigo-700">Sala de estudio</span>
               <span aria-hidden="true">·</span>
               <span>
-                Tu rol: <strong className="text-slate-900">Anfitrión</strong>
+                Tu rol: <strong className="text-slate-900">{isHost ? 'Anfitrión' : 'Participante'}</strong>
               </span>
             </div>
             <h1 id="room-title" className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight [text-wrap:pretty] break-words">
               {room.name}
             </h1>
             <p className="text-sm text-slate-600 mt-1.5 [text-wrap:pretty]">
-              Eres el anfitrión de esta sala. Comparte el ID único con tus compañeros para que puedan unirse.
+              {isHost ? 'Eres el anfitrión de esta sala. Comparte el ID único con tus compañeros para que puedan unirse.' : 'Has entrado como participante.'}
             </p>
           </div>
 
@@ -168,6 +201,10 @@ export default function Room() {
             </Button>
           </div>
         </div>
+        {isHost && <div className="mt-4"><RoomActions room={room} inRoom
+          onDeletingChange={(pending) => { deletingHere.current = pending; }}
+          onRenamed={(value) => { setName(value); setNotice(`Nombre actualizado: «${value}».`); }}
+          onDeleted={() => leaveDeleted(true)} /></div>}
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -224,7 +261,7 @@ export default function Room() {
                 )}
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 break-words">{fullName} (tú)</p>
-                  <p className="text-xs text-slate-600 break-words">@{profile?.username} · Anfitrión</p>
+                   <p className="text-xs text-slate-600 break-words">@{profile?.username} · {isHost ? 'Anfitrión' : 'Participante'}</p>
                 </div>
               </div>
               <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />
