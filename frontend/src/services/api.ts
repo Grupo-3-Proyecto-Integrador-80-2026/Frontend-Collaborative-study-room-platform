@@ -151,6 +151,8 @@ export interface Room {
 // Endpoints del Sprint 2 · US-06
 export const roomsApi = {
   listMine: () => apiFetch<{ success: boolean; rooms: Room[] }>('/api/rooms', {}, true),
+  getById: (id: string, signal?: AbortSignal) =>
+    apiFetch<{ success: boolean; room: Room }>(`/api/rooms/${encodeURIComponent(id)}`, { signal }, true),
   rename: (id: string, name: string) =>
     apiFetch<null>(`/api/rooms/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ name }) }, true),
   remove: (id: string) =>

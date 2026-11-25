@@ -2,7 +2,8 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Clock, Copy, FileText, SearchX, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { roomsApi } from '../services/api';
+import { ApiError, roomsApi } from '../services/api';
+import { isRoomId, missingRoomHelp, roomIdHelp } from '../utils/roomInvitation';
 import { watchRoom } from '../services/roomEvents';
 import { RoomActions } from '../components/RoomActions';
 import { Alert } from '../components/ui/Alert';
@@ -11,7 +12,7 @@ import { Button } from '../components/ui/Button';
 import { Toast } from '../components/ui/Toast';
 import { ErrorBanner, LoadingBanner } from '../components/ui/StatusBanner';
 
-type LoadState = 'loading' | 'ready' | 'not-found' | 'error';
+type LoadState = 'loading' | 'connecting' | 'ready' | 'not-found' | 'forbidden' | 'error';
 
 const backLink =
   'min-h-11 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:text-indigo-700 rounded-xl transition-colors';
@@ -26,13 +27,16 @@ function RoomView({ id }: { id: string }) {
   const navigate = useNavigate();
   const { profile, firebaseUser } = useAuth();
   const [name, setName] = useState('Sala de estudio');
-  const [isHost, setHost] = useState(false);
+  const [ownerId, setOwnerId] = useState('');
+  const isHost = ownerId === firebaseUser?.uid;
+  const [members, setMembers] = useState<string[]>([]);
   const [liveError, setLiveError] = useState(false);
   const [notice, setNotice] = useState('');
-  const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [loadState, setLoadState] = useState<LoadState>(isRoomId(id) ? 'loading' : 'not-found');
   const [reloadKey, setReloadKey] = useState(0);
   const { copiedId, toast, copy } = useCopyRoomId();
   const createdRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const deletingHere = useRef(false);
   const justCreated = Boolean(isHost && location.state?.justCreated && !notice);
   const room = { id, name };
@@ -41,27 +45,26 @@ function RoomView({ id }: { id: string }) {
   const onDeletedEvent = useEffectEvent(leaveDeleted);
 
   useEffect(() => {
-    if (!firebaseUser) return;
-    let active = true;
+    if (!firebaseUser || !isRoomId(id)) return;
+    const controller = new AbortController();
     let stop: (() => void) | undefined;
     roomsApi
-      .listMine()
-      .then((res) => {
-        if (!active) return;
-        // El rol procede de la API autenticada, nunca del estado de navegación.
-        const own = res.rooms.find((r) => r.id === id && r.ownerId === firebaseUser.uid);
-        setHost(Boolean(own));
-        if (own) {
-          setName(own.name);
-          setLoadState('ready');
-        }
-        let admitted = Boolean(own);
+      .getById(id, controller.signal)
+      .then(({ room }) => {
+        if (controller.signal.aborted) return;
+        // Revalidar también al recargar o abrir desde el historial; el enlace no acredita el rol.
+        const own = room.ownerId === firebaseUser.uid;
+        setOwnerId(room.ownerId);
+        setName(room.name);
+        setLoadState(own ? 'ready' : 'connecting');
+        let admitted = own;
         stop = watchRoom(id, firebaseUser, {
           joined: () => { admitted = true; setLiveError(false); setLoadState('ready'); },
+          membersChanged: setMembers,
           renamed: setName,
           // El evento bloquea la sala antes de que la API termine de borrar los mensajes.
           // Quien inició el DELETE espera su 204; los demás salen de inmediato.
-          deleted: () => { if (!deletingHere.current) onDeletedEvent(Boolean(own)); },
+          deleted: () => { if (!deletingHere.current) onDeletedEvent(own); },
           missing: () => setLoadState('not-found'),
           unavailable: () => {
             setLiveError(true);
@@ -69,27 +72,30 @@ function RoomView({ id }: { id: string }) {
           },
         });
       })
-      .catch(() => {
-        if (active) setLoadState('error');
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setLoadState(err instanceof ApiError && err.statusCode === 404 ? 'not-found'
+          : err instanceof ApiError && err.statusCode === 403 ? 'forbidden' : 'error');
       });
     return () => {
-      active = false;
+      controller.abort();
       stop?.();
     };
   }, [id, firebaseUser, reloadKey]);
 
   // Tras crear la sala, el foco va a la confirmación para que el lector la lea.
   useEffect(() => {
-    if (justCreated) createdRef.current?.focus();
-  }, [justCreated]);
+    if (loadState !== 'ready') return;
+    (createdRef.current ?? titleRef.current)?.focus();
+  }, [loadState]); // El foco solo cambia al entrar, no al renombrar la sala.
 
   const retry = () => {
     setLoadState('loading');
     setReloadKey((key) => key + 1);
   };
 
-  if (loadState === 'loading') {
-    return <LoadingBanner>Cargando la sala de estudio...</LoadingBanner>;
+  if (loadState === 'loading' || loadState === 'connecting') {
+    return <LoadingBanner>{loadState === 'connecting' ? 'Conectando con la sala…' : 'Cargando la sala de estudio...'}</LoadingBanner>;
   }
 
   if (loadState === 'error') {
@@ -106,17 +112,17 @@ function RoomView({ id }: { id: string }) {
     );
   }
 
-  if (loadState === 'not-found') {
+  if (loadState === 'not-found' || loadState === 'forbidden') {
     return (
       <section aria-labelledby="room-missing" className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 text-center w-full">
         <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center mx-auto mb-4" aria-hidden="true">
           <SearchX className="w-7 h-7" />
         </div>
         <h1 id="room-missing" className="text-lg font-bold text-slate-900 mb-2">
-          No encontramos esta sala
+          {loadState === 'forbidden' ? 'Tu cuenta no tiene acceso a esta sala' : 'No encontramos esta sala'}
         </h1>
         <p className="text-sm text-slate-600 max-w-md mx-auto mb-6 [text-wrap:pretty]">
-          Revisa el enlace o vuelve al panel para ver las salas que has creado.
+          {loadState === 'forbidden' ? 'Vuelve al panel para continuar.' : isRoomId(id) ? missingRoomHelp : roomIdHelp}
         </p>
         <Link to="/panel" className={backLink}>
           <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -178,7 +184,7 @@ function RoomView({ id }: { id: string }) {
                 Tu rol: <strong className="text-slate-900">{isHost ? 'Anfitrión' : 'Participante'}</strong>
               </span>
             </div>
-            <h1 id="room-title" className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight [text-wrap:pretty] break-words">
+            <h1 ref={titleRef} tabIndex={-1} id="room-title" className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight [text-wrap:pretty] break-words">
               {room.name}
             </h1>
             <p className="text-sm text-slate-600 mt-1.5 [text-wrap:pretty]">
@@ -213,9 +219,9 @@ function RoomView({ id }: { id: string }) {
             <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4" aria-hidden="true">
               <Clock className="w-7 h-7" />
             </div>
-            <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-1">Sala creada · En espera</p>
+            <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-1">Sesión de estudio</p>
             <h2 id="room-waiting" className="text-lg font-bold text-slate-900 mb-2 mt-2 [text-wrap:pretty]">
-              Esperando a tus compañeros en la sala
+              {members.length > 1 && !liveError ? 'Tu equipo está en la sala' : 'Comparte esta sala con tu equipo'}
             </h2>
             <p className="text-sm text-slate-600 max-w-md mx-auto mb-6 leading-relaxed [text-wrap:pretty] break-words">
               Copia el ID <span className="font-mono font-semibold text-slate-700 break-all">{room.id}</span> y compártelo para que puedan entrar a estudiar contigo.
@@ -261,10 +267,22 @@ function RoomView({ id }: { id: string }) {
                 )}
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900 break-words">{fullName} (tú)</p>
-                   <p className="text-xs text-slate-600 break-words">@{profile?.username} · {isHost ? 'Anfitrión' : 'Participante'}</p>
+                  <p className="text-xs text-slate-600 break-words">@{profile?.username} · {isHost ? 'Anfitrión' : 'Participante'}</p>
                 </div>
               </div>
-              <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />
+              {isHost && <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />}
+            </div>
+            <div aria-live="polite" aria-relevant="all">
+              {!liveError && members.length > 0 && <>
+                <p className="text-xs text-slate-600 mt-3">{members.length} {members.length === 1 ? 'persona conectada' : 'personas conectadas'}</p>
+                <ul className="space-y-2 mt-2">
+                  {members.filter(uid => uid !== firebaseUser?.uid).map(uid => (
+                    <li key={uid} className="p-3 bg-slate-50 rounded-xl text-sm text-slate-700 break-all">
+                      <strong>{uid === ownerId ? 'Anfitrión' : 'Participante'}</strong> · {uid}
+                    </li>
+                  ))}
+                </ul>
+              </>}
             </div>
           </div>
         </aside>

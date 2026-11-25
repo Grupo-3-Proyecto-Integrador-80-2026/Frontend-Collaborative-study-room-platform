@@ -7,6 +7,7 @@ import { useCopyRoomId } from '../hooks/useCopyRoomId';
 import { formatRoomDate } from '../utils/formatDate';
 import { RoomNameModal } from '../components/RoomNameModal';
 import { RoomActions } from '../components/RoomActions';
+import { JoinRoomForm } from '../components/JoinRoomForm';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
@@ -128,7 +129,10 @@ export default function Dashboard() {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
-        <section aria-labelledby="rooms-title" aria-busy={loadState === 'loading'} className="lg:col-span-8 space-y-6 w-full">
+        <div className="lg:col-start-9 lg:col-span-4 lg:row-start-1">
+          <JoinRoomForm />
+        </div>
+        <section aria-labelledby="rooms-title" aria-busy={loadState === 'loading'} className="lg:col-start-1 lg:col-span-8 lg:row-start-1 lg:row-span-2 space-y-6 w-full">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 id="rooms-title" ref={roomsTitle} tabIndex={-1} className="text-lg sm:text-xl font-bold text-slate-900">
@@ -258,7 +262,7 @@ export default function Dashboard() {
           )}
         </section>
 
-        <aside aria-label="Ayuda" className="lg:col-span-4 space-y-6 w-full">
+        <aside aria-label="Ayuda" className="lg:col-start-9 lg:col-span-4 space-y-6 w-full">
           <div className="p-4 sm:p-5 bg-indigo-50/70 rounded-2xl border border-indigo-100 text-sm text-indigo-900 w-full">
             <h2 className="flex items-center gap-2 font-bold mb-1.5 text-sm">
               <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />

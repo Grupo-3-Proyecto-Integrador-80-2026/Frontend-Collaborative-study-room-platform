@@ -47,6 +47,7 @@ function renderFlow(path = '/ingreso', withLayout = false) {
       <Route path="/ingreso" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path="/panel" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/otra-privada" element={<ProtectedRoute><h1>Otra ruta privada</h1></ProtectedRoute>} />
+      <Route path="/salas/AAAAAAAAAAAAAAAAAAA1" element={<ProtectedRoute><h1>Sala de Física</h1></ProtectedRoute>} />
     </Routes>
   );
   return render(
@@ -99,15 +100,18 @@ describe('US-03 | E1 | login manual exitoso', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('tras autenticarse devuelve a la ruta privada solicitada (E5)', async () => {
+  it.each([
+    ['/otra-privada', 'Otra ruta privada'],
+    ['/salas/AAAAAAAAAAAAAAAAAAA1', 'Sala de Física'],
+  ])('tras autenticarse devuelve a la ruta privada solicitada %s', async (path, title) => {
     successfulSignIn();
     const user = userEvent.setup();
-    renderFlow('/otra-privada');
+    renderFlow(path);
     expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
     await user.type(emailInput(), 'ana@correounivalle.edu.co');
     await user.type(passwordInput(), 'Prueba123');
     await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(await screen.findByRole('heading', { name: 'Otra ruta privada' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
   });
 
   it('deshabilita el envío mientras autentica (estado de carga)', async () => {
