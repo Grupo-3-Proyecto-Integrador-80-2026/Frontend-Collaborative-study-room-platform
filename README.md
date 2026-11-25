@@ -75,6 +75,16 @@ El chat utiliza el socket autenticado de la sala. Envía `message:send` con `{ro
 
 ## Ejecución en Modo Local (Desarrollo)
 
+Para entrar a salas en desarrollo se necesitan **la API y el servicio Socket.IO**. En el `.env` del frontend usa `VITE_API_URL=http://localhost:3000` y `VITE_REALTIME_URL=http://localhost:3001`.
+
+- **API:** desde `Backend-API/`, con su `.env` configurado, ejecuta `npm run dev`. Comprueba en `http://localhost:3000/api-docs/` que `/api/rooms/{id}` incluye **GET**, además de PATCH y DELETE.
+- **Tiempo real:** en otra terminal, desde `Backend-API/`, con las dependencias de `backend-realtime` instaladas y Node 22+, ejecuta:
+  ```bash
+  npm --prefix backend-realtime run build
+  PORT=3001 FRONTEND_ORIGIN=http://localhost:5173 node --env-file=.env backend-realtime/dist/server.js
+  ```
+  El proceso usa la credencial de Firebase configurada en el `.env` de la API. `http://localhost:3001/health` debe responder `{"status":"ok"}`. Abre Vite con el origen exacto configurado en `FRONTEND_ORIGIN`.
+
 Sigue estos pasos para compilar y ejecutar el frontend en tu máquina local:
 
 1. **Instalar dependencias del proyecto:**

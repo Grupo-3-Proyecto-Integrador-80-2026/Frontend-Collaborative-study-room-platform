@@ -59,9 +59,11 @@ beforeEach(() => {
 
 describe('US-06 | E2 | panel vacío y con salas', () => {
   it('muestra la carga y luego un mensaje amigable si no hay salas', async () => {
-    vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [] });
+    let finish!: (result: { success: boolean; rooms: RoomData[] }) => void;
+    vi.spyOn(roomsApi, 'listMine').mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     renderAt();
     expect(await screen.findByText('Cargando tus salas de estudio...')).toBeInTheDocument();
+    await act(async () => finish({ success: true, rooms: [] }));
     expect(await screen.findByRole('heading', { name: 'Aún no tienes salas creadas' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '¡Hola, Ana!' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Crear sala' })).toHaveLength(2);
@@ -316,6 +318,18 @@ describe('US-08 | unirse a una sala', () => {
     expect(input).toHaveAccessibleDescription(/No encontramos una sala con ese ID/);
     expect(input).toHaveValue(older.id);
     expect(lookup).toHaveBeenCalledTimes(2);
+    expect(watchRoom).not.toHaveBeenCalled();
+  });
+
+  it('un 404 de ruta no disponible no acusa al ID ni inicia el ingreso', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [] });
+    vi.spyOn(roomsApi, 'getById').mockRejectedValue(new ApiError(404, 'NOT_FOUND', 'La ruta no existe.'));
+    renderAt();
+    const input = await screen.findByRole('textbox', { name: 'ID de la sala' });
+    await user.type(input, `${older.id}{Enter}`);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no está disponible en la API/);
+    expect(input).not.toHaveAttribute('aria-invalid', 'true');
     expect(watchRoom).not.toHaveBeenCalled();
   });
 

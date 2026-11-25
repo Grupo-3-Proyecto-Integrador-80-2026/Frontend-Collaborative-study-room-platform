@@ -14,7 +14,7 @@ import { Button } from '../components/ui/Button';
 import { Toast } from '../components/ui/Toast';
 import { ErrorBanner, LoadingBanner } from '../components/ui/StatusBanner';
 
-type LoadState = 'loading' | 'connecting' | 'ready' | 'not-found' | 'forbidden' | 'error';
+type LoadState = 'loading' | 'connecting' | 'ready' | 'not-found' | 'forbidden' | 'error' | 'realtime-error';
 
 const backLink =
   'min-h-11 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:text-indigo-700 rounded-xl transition-colors';
@@ -77,13 +77,13 @@ function RoomView({ id }: { id: string }) {
           unavailable: () => {
             setSender(null);
             setLiveError(true);
-            if (!admitted) setLoadState('error');
+            if (!admitted) setLoadState('realtime-error');
           },
         });
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
-        setLoadState(err instanceof ApiError && err.statusCode === 404 ? 'not-found'
+        setLoadState(err instanceof ApiError && err.code === 'ROOM_NOT_FOUND' ? 'not-found'
           : err instanceof ApiError && err.statusCode === 403 ? 'forbidden' : 'error');
       });
     return () => {
@@ -107,10 +107,10 @@ function RoomView({ id }: { id: string }) {
     return <LoadingBanner>{loadState === 'connecting' ? 'Conectando con la sala…' : 'Cargando la sala de estudio...'}</LoadingBanner>;
   }
 
-  if (loadState === 'error') {
+  if (loadState === 'error' || loadState === 'realtime-error') {
     return (
       <div className="w-full">
-        <ErrorBanner title="No pudimos abrir la sala." onRetry={retry}>
+        <ErrorBanner title={loadState === 'realtime-error' ? 'Encontramos la sala, pero no pudimos conectar en tiempo real.' : 'No pudimos consultar la sala en la API.'} onRetry={retry}>
           Revisa tu conexión e inténtalo de nuevo.
         </ErrorBanner>
         <Link to="/panel" className={backLink}>
