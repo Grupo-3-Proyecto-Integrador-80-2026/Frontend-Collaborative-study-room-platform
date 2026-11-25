@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,9 @@ import { ProtectedRoute } from '../src/components/ProtectedRoute';
 import Dashboard from '../src/pages/Dashboard';
 import Room from '../src/pages/Room';
 import { ApiError, authApi, roomsApi, type Room as RoomData, type UserProfile } from '../src/services/api';
+import { watchRoom } from '../src/services/roomEvents';
+
+vi.mock('../src/services/roomEvents', () => ({ watchRoom: vi.fn() }));
 
 const mocks = vi.hoisted(() => ({ auth: { currentUser: null as User | null } }));
 vi.mock('../src/config/firebase', () => ({ auth: mocks.auth, googleProvider: {} }));
@@ -49,6 +52,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.resetAllMocks();
   mocks.auth.currentUser = sessionUser;
+  vi.mocked(watchRoom).mockReturnValue(() => {});
   vi.spyOn(authApi, 'getMyProfile').mockResolvedValue({ success: true, user: profile });
 });
 
@@ -123,6 +127,7 @@ describe('US-06 | E1 y E3 | crear sala', () => {
     const created: RoomData = { id: 'CCCCCCCCCCCCCCCCCCC3', ownerId: 'salas-qa', name: 'Álgebra', createdAt: new Date().toISOString() };
     const create = vi.spyOn(roomsApi, 'create').mockResolvedValue({ success: true, room: created });
     const dialog = await openCreate(user);
+    vi.mocked(roomsApi.listMine).mockResolvedValue({ success: true, rooms: [created] });
     await user.type(within(dialog).getByRole('textbox', { name: 'Nombre de la sala' }), '  Álgebra  {Enter}');
 
     expect(create).toHaveBeenCalledWith('Álgebra');
@@ -185,10 +190,97 @@ describe('US-06 | vista base de la sala', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Física II' })).toBeInTheDocument();
   });
 
-  it('informa cuando la sala no está entre las propias', async () => {
+  it('informa cuando el servidor confirma que el ID no existe', async () => {
+    vi.mocked(watchRoom).mockImplementation((_id, _user, events) => { events.missing(); return () => {}; });
     vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [older] });
     renderAt('/salas/ZZZZZZZZZZZZZZZZZZZ9');
-    expect(await screen.findByRole('heading', { name: 'No encontramos esta sala entre tus salas' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'No encontramos esta sala' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('link', { name: 'Volver al panel' })).toBeInTheDocument());
+  });
+});
+
+describe('US-07 | gestión de salas', () => {
+  it('valida, conserva el nombre ante un 403 y actualiza la tarjeta solo tras guardar', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [older] });
+    const rename = vi.spyOn(roomsApi, 'rename').mockRejectedValueOnce(new ApiError(403, 'HOST_REQUIRED', 'Sin permiso'))
+      .mockResolvedValueOnce(null);
+    renderAt();
+    const opener = await screen.findByRole('button', { name: `Editar nombre de ${older.name}` });
+    await user.click(opener);
+    const input = screen.getByRole('textbox', { name: 'Nombre de la sala' });
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue(older.name);
+    await user.clear(input);
+    await user.type(input, '   {Enter}');
+    expect(input).toHaveAccessibleDescription(/obligatorio/);
+    expect(rename).not.toHaveBeenCalled();
+    await user.type(input, 'Álgebra  {Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Solo el anfitrión/);
+    expect(screen.getByRole('heading', { name: older.name })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(rename).toHaveBeenLastCalledWith(older.id, 'Álgebra');
+    expect(await screen.findByRole('heading', { name: 'Álgebra' })).toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
+  it('cancelar no elimina; confirmar la última sala muestra el panel vacío', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [older] });
+    const remove = vi.spyOn(roomsApi, 'remove').mockResolvedValue(null);
+    renderAt();
+    const opener = await screen.findByRole('button', { name: `Eliminar sala ${older.name}` });
+    await user.click(opener);
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(opener).toHaveFocus();
+    expect(remove).not.toHaveBeenCalled();
+    await user.click(opener);
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar sala' }));
+    expect(remove).toHaveBeenCalledWith(older.id);
+    expect(await screen.findByRole('heading', { name: 'Aún no tienes salas creadas' })).toBeInTheDocument();
+    expect(screen.getByText(`Sala «${older.name}» eliminada.`)).toBeInTheDocument();
+  });
+
+  it('el anfitrión puede eliminar desde la sala y vuelve al panel', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(roomsApi, 'listMine').mockResolvedValueOnce({ success: true, rooms: [older] })
+      .mockResolvedValue({ success: true, rooms: [] });
+    let confirmDeletion!: (value: null) => void;
+    vi.spyOn(roomsApi, 'remove').mockReturnValue(new Promise<null>((resolve) => { confirmDeletion = resolve; }));
+    renderAt(`/salas/${older.id}`);
+    await user.click(await screen.findByRole('button', { name: 'Acciones de la sala' }));
+    await user.click(screen.getByRole('button', { name: `Eliminar sala ${older.name}` }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar sala' }));
+    act(() => vi.mocked(watchRoom).mock.calls[0][2].deleted());
+    expect(screen.getByRole('button', { name: 'Eliminando…' })).toBeDisabled();
+    await act(async () => confirmDeletion(null));
+    expect(await screen.findByRole('heading', { name: 'Aún no tienes salas creadas' })).toBeInTheDocument();
+    expect(screen.getByText(`Sala «${older.name}» eliminada.`)).toBeInTheDocument();
+  });
+
+  it('el invitado no tiene acciones, recibe el cambio de nombre y sale con aviso al borrarse la sala', async () => {
+    const user = userEvent.setup();
+    const stop = vi.fn();
+    vi.mocked(watchRoom).mockImplementation((_id, _user, events) => {
+      events.joined();
+      events.renamed(older.name);
+      return stop;
+    });
+    vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [] });
+    renderAt(`/salas/${older.id}`);
+    await screen.findByRole('heading', { name: older.name });
+    expect(screen.getByText(/Tu rol:/)).toHaveTextContent('Participante');
+    expect(screen.queryByRole('button', { name: /acciones de la sala|editar|eliminar/i })).not.toBeInTheDocument();
+    const events = vi.mocked(watchRoom).mock.calls[0][2];
+    act(() => events.renamed('Literatura'));
+    expect(screen.getByRole('heading', { name: 'Literatura' })).toBeInTheDocument();
+    act(() => events.deleted());
+    const alert = await screen.findByRole('alertdialog', { name: 'El anfitrión eliminó la sala «Literatura»' });
+    expect(within(alert).getByRole('button', { name: 'Ir al Panel' })).toHaveFocus();
+    expect(stop).toHaveBeenCalledOnce();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mis salas de estudio' })).toHaveFocus();
   });
 });
