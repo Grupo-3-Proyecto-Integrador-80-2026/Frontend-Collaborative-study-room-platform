@@ -56,6 +56,7 @@ function renderFlow(path = '/panel') {
       <Route path="/registro/usuario" element={<ProtectedRoute><ChooseUsername /></ProtectedRoute>} />
       <Route path="/panel" element={<ProtectedRoute><h1>Panel privado</h1></ProtectedRoute>} />
       <Route path="/otra-privada" element={<ProtectedRoute><h1>Otra ruta privada</h1></ProtectedRoute>} />
+      <Route path="/salas/AAAAAAAAAAAAAAAAAAA1" element={<ProtectedRoute><h1>Sala de Física</h1></ProtectedRoute>} />
     </Routes>
   </main></AuthProvider></MemoryRouter>);
 }
@@ -127,6 +128,24 @@ describe('US-02 | E1/E3 | sesión y rutas privadas', () => {
 });
 
 describe('US-02 | E2/E4 | completar perfil', () => {
+  it('US-08: conserva la invitación durante el ingreso con Google y la elección de username', async () => {
+    mocks.auth.currentUser = null;
+    mocks.popup.mockImplementation(async () => {
+      mocks.auth.currentUser = googleUser;
+      await mocks.listener?.(googleUser);
+      return { user: googleUser };
+    });
+    vi.mocked(authApi.completeProfile).mockImplementation(async () => {
+      vi.mocked(authApi.getMyProfile).mockResolvedValue({ success: true, user: profile });
+      return { success: true, user: profile };
+    });
+    renderFlow('/salas/AAAAAAAAAAAAAAAAAAA1');
+    await userEvent.click(await screen.findByRole('button', { name: /Google/ }));
+    await userEvent.type(await screen.findByLabelText(/^Nombre de usuario/), 'ana_qa');
+    await userEvent.click(screen.getByRole('button', { name: 'Completar y entrar a la sala' }));
+    expect(await screen.findByRole('heading', { name: 'Sala de Física' })).toBeInTheDocument();
+  });
+
   it('E2: normaliza el username, guarda y sincroniza antes de entrar al panel', async () => {
     vi.mocked(authApi.completeProfile).mockImplementation(async () => {
       vi.mocked(authApi.getMyProfile).mockResolvedValue({ success: true, user: profile });

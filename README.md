@@ -53,6 +53,15 @@ Configura ambas URLs en Vercel antes de compilar. El servicio de tiempo real deb
 
 Para el DUE, captura el error de validación y el resultado en ambas sesiones con la URL de producción visible.
 
+### Comprobar US-08: unirse a una sala
+
+La API debe incluir `GET /api/rooms/:id` de US-08. La presencia se obtiene del ACK de `room:join` y de los eventos `presence:joined` y `presence:left` del servicio de tiempo real.
+
+1. Copia el ID de una sala como anfitrión. Desde otra cuenta, pégalo con espacios al principio y al final en **Panel → Unirse a una sala**. Pulsa `Enter`: verifica el nombre, el rol de participante y el contador en ambas sesiones. Sal de la sala y comprueba que el contador del anfitrión disminuye.
+2. Prueba con un campo en blanco, con un ID incompleto y con un ID de 20 caracteres que no exista. Verifica que puedas corregirlo con el teclado y que el lector de pantalla anuncie el error.
+3. Abre `/salas/<id>` con sesión y en una ventana privada. En el segundo caso, inicia sesión y comprueba que vuelves a la misma sala, incluso si Google solicita completar el perfil.
+4. Para el DUE, registra el éxito y el error con la URL publicada visible y la revisión de accesibilidad en móvil y escritorio.
+
 ---
 
 ## Ejecución en Modo Local (Desarrollo)
