@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { roomReturnPath } from '../utils/roomInvitation';
 import { useAuth } from '../context/AuthContext';
 import { authApi, ApiError } from '../services/api';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
@@ -10,6 +11,7 @@ import { LogoMark } from '../components/ui/Logo';
 
 export default function ChooseUsername() {
   const navigate = useNavigate();
+  const destination = roomReturnPath(useLocation().state?.from?.pathname);
   const { firebaseUser, refreshProfile, logout } = useAuth();
 
   // Si Google solo entregó un nombre, preparamos el campo de apellidos
@@ -71,7 +73,7 @@ export default function ChooseUsername() {
       });
 
       await refreshProfile();
-      navigate('/panel', { replace: true });
+      navigate(destination, { replace: true });
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.errors && err.errors.length > 0) {
@@ -214,7 +216,7 @@ export default function ChooseUsername() {
 
             <div className="pt-2">
               <Button type="submit" loading={isSubmitting} loadingText="Guardando..." className="!w-full">
-                Completar y entrar al panel
+                {destination === '/panel' ? 'Completar y entrar al panel' : 'Completar y entrar a la sala'}
               </Button>
             </div>
           </form>

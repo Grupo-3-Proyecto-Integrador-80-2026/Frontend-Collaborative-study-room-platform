@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { roomReturnPath } from '../utils/roomInvitation';
 
 const ProfileError = () => {
   const { profileError, refreshProfile, logout } = useAuth();
@@ -45,11 +46,11 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // 2. Si entró con Google y no ha completado el username (US-02) -> Obligatorio a /registro/usuario
   if (needsUsername && location.pathname !== '/registro/usuario') {
-    return <Navigate to="/registro/usuario" replace />;
+    return <Navigate to="/registro/usuario" state={{ from: { pathname: location.pathname } }} replace />;
   }
 
   if (!needsUsername && location.pathname === '/registro/usuario') {
-    return <Navigate to="/panel" replace />;
+    return <Navigate to={roomReturnPath(location.state?.from?.pathname)} replace />;
   }
 
   return <>{children}</>;
@@ -64,7 +65,7 @@ export const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ child
   if (firebaseUser) {
     if (profileError || (!profile && !needsUsername)) return <ProfileError />;
     if (needsUsername) {
-      return <Navigate to="/registro/usuario" replace />;
+      return <Navigate to="/registro/usuario" state={location.state} replace />;
     }
     // US-03 E5: al volver de la redirección del guardia, respeta la ruta que el
     // usuario pidió originalmente en lugar de llevarlo siempre al panel.
