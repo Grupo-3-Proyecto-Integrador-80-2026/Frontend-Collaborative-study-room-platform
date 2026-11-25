@@ -9,6 +9,7 @@ interface ModalProps {
   onClose: () => void;
   titleId: string;
   title: React.ReactNode;
+  role?: 'dialog' | 'alertdialog';
   description?: React.ReactNode;
   descriptionId?: string;
   /** Ícono destacado a la izquierda del título. */
@@ -29,6 +30,7 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   titleId,
   title,
+  role = 'dialog',
   description,
   descriptionId,
   icon,
@@ -101,16 +103,16 @@ export const Modal: React.FC<ModalProps> = ({
     >
       <div
         ref={dialogRef}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         className={`bg-white rounded-2xl border border-slate-200 shadow-2xl w-full ${size === 'lg' ? 'max-w-lg' : 'max-w-md'} p-5 sm:p-6 max-h-[90vh] overflow-y-auto`}
       >
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {icon}
-            <div>
+            <div className="min-w-0 break-words">
               <h2 id={titleId} className="text-lg font-bold text-slate-900 [text-wrap:pretty]">
                 {title}
               </h2>

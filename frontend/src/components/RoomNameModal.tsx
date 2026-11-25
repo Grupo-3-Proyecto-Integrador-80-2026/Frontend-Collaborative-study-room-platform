@@ -7,16 +7,17 @@ import { Button } from './ui/Button';
 import { Alert } from './ui/Alert';
 
 // Límite del prototipo aprobado. La API admite hasta 80, así que 50 siempre pasa.
-export const MAX_ROOM_NAME_LENGTH = 50;
+const MAX_ROOM_NAME_LENGTH = 50;
 
-interface CreateRoomModalProps {
+type RoomNameModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (room: Room) => void;
-}
+} & ({ room?: undefined; onCreated: (room: Room) => void } |
+     { room: Pick<Room, 'name' | 'id'>; onRenamed: (name: string) => void });
 
-export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose, onCreated }) => {
-  const [roomName, setRoomName] = useState('');
+export const RoomNameModal: React.FC<RoomNameModalProps> = (props) => {
+  const { isOpen, onClose, room } = props;
+  const [roomName, setRoomName] = useState(room?.name ?? '');
   const [touched, setTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -57,20 +58,26 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
     setIsSubmitting(true);
     try {
-      const { room } = await roomsApi.create(roomName.trim());
+      const name = roomName.trim();
+      if (props.room) {
+        await roomsApi.rename(props.room.id, name);
+        props.onRenamed(name);
+      } else {
+        const result = await roomsApi.create(name);
+        setRoomName('');
+        setTouched(false);
+        props.onCreated(result.room);
+      }
       setIsSubmitting(false);
-      setRoomName('');
-      setTouched(false);
-      onCreated(room);
     } catch (err) {
       setIsSubmitting(false);
-      if (err instanceof ApiError && err.code === 'INVALID_ROOM_NAME') {
-        setServerError(err.message);
+      if (err instanceof ApiError && err.statusCode === 403) {
+        setServerError('Solo el anfitrión puede editar esta sala.');
       } else if (err instanceof ApiError && err.statusCode < 500 && err.code !== 'ERROR_DESCONOCIDO') {
         setServerError(err.message);
       } else {
         setServerError(
-          'No pudimos crear la sala en este momento por un problema de conexión. Conservamos el nombre que escribiste para que puedas intentarlo de nuevo.'
+          `No pudimos ${room ? 'editar' : 'crear'} la sala en este momento. Conservamos el nombre que escribiste para que puedas intentarlo de nuevo.`
         );
       }
     }
@@ -83,11 +90,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
       isOpen={isOpen}
       onClose={close}
       busy={isSubmitting}
-      titleId="create-room-title"
-      title="Crear sala"
-      descriptionId="create-room-description"
-      description={<p className="text-slate-600">Elige un nombre para tu sala y generaremos un ID único para compartir.</p>}
-      closeLabel="Cerrar ventana de crear sala"
+      titleId="room-name-title"
+      title={room ? 'Editar nombre de la sala' : 'Crear sala'}
+      descriptionId="room-name-description"
+      description={<p className="text-slate-600">{room ? 'El cambio se reflejará de inmediato en la sala y en tu Panel.' : 'Elige un nombre para tu sala y generaremos un ID único para compartir.'}</p>}
+      closeLabel={room ? 'Cerrar ventana de editar nombre' : 'Cerrar ventana de crear sala'}
       initialFocusRef={inputRef}
     >
       {serverError && (
@@ -96,7 +103,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
         </Alert>
       )}
       <p role="status" className="sr-only">
-        {isSubmitting ? 'Creando sala...' : ''}
+        {isSubmitting && (room ? 'Guardando…' : 'Creando sala...')}
       </p>
 
       <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting} className="space-y-4 mt-5">
@@ -114,6 +121,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
           placeholder="Ej: Taller de Cálculo Multivariable"
           autoComplete="off"
           error={nameError}
+          announceError
           help={`Máximo ${MAX_ROOM_NAME_LENGTH} caracteres.`}
           onChange={(e) => {
             setRoomName(e.target.value);
@@ -126,8 +134,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
           <Button variant="ghost" onClick={close} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button type="submit" loading={isSubmitting} loadingText="Creando sala..." icon={<Plus className="w-4 h-4" aria-hidden="true" />}>
-            Crear sala
+          <Button type="submit" loading={isSubmitting} loadingText={room ? 'Guardando…' : 'Creando sala...'} icon={!room && <Plus className="w-4 h-4" aria-hidden="true" />}>
+            {room ? 'Guardar' : 'Crear sala'}
           </Button>
         </div>
       </form>
