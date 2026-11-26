@@ -71,6 +71,15 @@ El chat utiliza el socket autenticado de la sala. Envía `message:send` con `{ro
 3. Con suficientes mensajes para desplazar el chat, sube en B y escribe un borrador. Envía desde A: B debe conservar la posición, el foco y el borrador. Activa **Mensajes nuevos** para ver el último. Repite al final del chat para comprobar el desplazamiento automático.
 4. Desconecta la red en B: debe aparecer un aviso y bloquearse el envío hasta reconectar. Verifica con teclado y lector de pantalla que se anuncien los mensajes sin mover el foco; captura el éxito y el error con la URL de producción visible.
 
+### Comprobar US-11: historial de chat
+
+El frontend consulta `GET /api/rooms/:id/messages?limit=50` con el token de sesión. La API debe incluir US-11 y tener listo en Firestore el índice compuesto `messages: roomId ASC, createdAt DESC` definido en `Backend-API/firestore.indexes.json`. Si la ruta aparece en Swagger y los registros de la API muestran `FAILED_PRECONDITION` al consultar, verifica el estado de ese índice.
+
+1. Abre una sala vacía. Envía mensajes desde dos cuentas y recarga: deben reaparecer en orden, con autor y hora, sin duplicados.
+2. En una sala con más de 50 mensajes, selecciona **Cargar mensajes anteriores** por teclado. Deben aparecer antes de los que estabas leyendo, sin saltar al final ni contarse como mensajes nuevos. Al llegar al principio desaparece el botón.
+3. Interrumpe la consulta del historial y reintenta. Si falla una página anterior, deben conservarse los mensajes ya visibles y el borrador. Desconecta una sesión, envía desde la otra y reconecta para comprobar que se recupera lo que faltaba.
+4. Registra en producción el éxito y el error controlado con la URL visible. Comprueba que el lector de pantalla anuncia el resumen de la carga en lugar de leer cada mensaje anterior.
+
 ---
 
 ## Ejecución en Modo Local (Desarrollo)

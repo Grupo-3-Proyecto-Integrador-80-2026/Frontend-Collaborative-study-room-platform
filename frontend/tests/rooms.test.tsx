@@ -54,6 +54,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.auth.currentUser = sessionUser;
   vi.mocked(watchRoom).mockReturnValue(() => {});
+  vi.spyOn(roomsApi, 'history').mockResolvedValue({ success: true, messages: [], nextBefore: null });
   vi.spyOn(authApi, 'getMyProfile').mockResolvedValue({ success: true, user: profile });
 });
 
@@ -409,7 +410,7 @@ describe('US-10 | chat de la sala', () => {
     });
     expect(within(log).getAllByRole('listitem')).toHaveLength(2);
     expect(log).not.toHaveTextContent('Sala ajena');
-    expect(log).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByText('Luis Díaz: Segundo').closest('[aria-live="polite"]')).toBeInTheDocument();
     expect(log.scrollTop).toBe(100);
     expect(input).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Mensajes nuevos (1)' }));
@@ -434,5 +435,104 @@ describe('US-10 | chat de la sala', () => {
     expect(screen.queryByRole('button', { name: 'Reintentar envío' })).not.toBeInTheDocument();
     expect(send).toHaveBeenCalledTimes(2);
     expect(within(screen.getByRole('log')).getAllByRole('listitem')).toHaveLength(1);
+  });
+});
+
+describe('US-11 | historial de chat', () => {
+  type Page = Awaited<ReturnType<typeof roomsApi.history>>;
+  const page = (messages: ChatMessage[], nextBefore: string | null = null): Page => ({ success: true, messages, nextBefore });
+  const msg = (n: number): ChatMessage => ({
+    id: String(n).padStart(20, '0'), roomId: older.id, authorId: 'luis', authorName: 'Luis',
+    createdAt: new Date(Date.UTC(2026, 10, 25, 10, n)).toISOString(), text: `Mensaje ${n}`,
+  });
+  const enter = () => renderAt(`/salas/${older.id}`);
+  const events = () => vi.mocked(watchRoom).mock.calls.at(-1)![2];
+  const visible = () => within(screen.getByRole('log')).queryAllByRole('listitem').map(row => row.querySelector('p')?.textContent);
+
+  beforeEach(() => {
+    vi.spyOn(roomsApi, 'getById').mockResolvedValue({ success: true, room: { ...older, ownerId: 'otra-cuenta' } });
+    vi.mocked(watchRoom).mockImplementation((_id, _user, listeners) => { listeners.joined(vi.fn()); return () => {}; });
+  });
+
+  it('no confunde carga o error con una sala vacía y permite reintentar', async () => {
+    const user = userEvent.setup();
+    let fail!: (error: Error) => void;
+    vi.mocked(roomsApi.history).mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+    enter();
+    expect(await screen.findByText('Cargando mensajes…')).toBeInTheDocument();
+    expect(screen.queryByText(/Aún no hay mensajes/)).not.toBeInTheDocument();
+    await act(async () => fail(new Error('Sin red')));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No pudimos cargar los mensajes/);
+    await user.click(screen.getByRole('button', { name: 'Reintentar historial' }));
+    expect(await screen.findByText(/Aún no hay mensajes en esta sala/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cargar mensajes anteriores/ })).not.toBeInTheDocument();
+  });
+
+  it('reinicia desde la última página si el cursor anterior ya no es válido', async () => {
+    const user = userEvent.setup();
+    const lookup = vi.mocked(roomsApi.history)
+      .mockRejectedValueOnce(new ApiError(400, 'INVALID_CURSOR', 'Vuelve a cargar el historial.'))
+      .mockResolvedValueOnce(page([msg(1)]));
+    enter();
+    await user.click(await screen.findByRole('button', { name: 'Reintentar historial' }));
+    expect(await screen.findByText('Mensaje 1')).toBeInTheDocument();
+    expect(lookup.mock.calls.map(([, before]) => before)).toEqual([null, null]);
+  });
+
+  it('combina la primera página con el socket, y al reingresar recupera los mensajes desde la API', async () => {
+    let resolve!: (p: Page) => void;
+    const lookup = vi.mocked(roomsApi.history).mockImplementationOnce(() => new Promise(done => { resolve = done; }))
+      .mockResolvedValue(page([msg(1), msg(2), msg(3)]));
+    const first = enter();
+    await screen.findByText('Cargando mensajes…');
+    act(() => { events().messageReceived(msg(2)); events().messageReceived(msg(3)); });
+    await act(async () => resolve(page([msg(1), msg(2), { ...msg(4), roomId: newer.id }])));
+    expect(visible()).toEqual(['Mensaje 1', 'Mensaje 2', 'Mensaje 3']);
+    first.unmount();
+    enter();
+    await screen.findByText('Este es el inicio de la conversación');
+    expect(visible()).toEqual(['Mensaje 1', 'Mensaje 2', 'Mensaje 3']);
+    expect(lookup.mock.calls.map(([id, before]) => [id, before])).toEqual([[older.id, null], [older.id, null]]);
+  });
+
+  it('al paginar conserva el punto de lectura, mantiene los mensajes ante un error y reintenta el mismo cursor', async () => {
+    const user = userEvent.setup();
+    let resolve!: (p: Page) => void;
+    const lookup = vi.mocked(roomsApi.history).mockResolvedValueOnce(page([msg(3), msg(4)], msg(3).id))
+      .mockRejectedValueOnce(new Error('Sin red')).mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    enter();
+    const olderButton = await screen.findByRole('button', { name: 'Cargar mensajes anteriores' });
+    const log = screen.getByRole('log');
+    Object.defineProperties(log, { scrollHeight: { value: 800 }, clientHeight: { value: 200 } });
+    const row = within(log).getAllByRole('listitem')[0];
+    Object.defineProperty(row, 'offsetTop', { get: () => row.previousElementSibling ? 180 : 0 });
+    log.scrollTop = 75;
+    fireEvent.scroll(log);
+    await user.click(olderButton);
+    expect(visible()).toEqual(['Mensaje 3', 'Mensaje 4']);
+    await user.click(screen.getByRole('button', { name: 'Reintentar historial' }));
+    expect(await screen.findByRole('button', { name: 'Cargando anteriores…' })).toHaveAttribute('aria-disabled', 'true');
+    act(() => events().messageReceived(msg(5)));
+    await act(async () => resolve(page([msg(1), msg(2)])));
+    expect(lookup.mock.calls.map(([, before]) => before)).toEqual([null, msg(3).id, msg(3).id]);
+    expect(visible()).toEqual(['Mensaje 1', 'Mensaje 2', 'Mensaje 3', 'Mensaje 4', 'Mensaje 5']);
+    expect(log.scrollTop).toBe(255);
+    expect(screen.getByRole('button', { name: 'Mensajes nuevos (1)' })).toBeInTheDocument();
+    expect(screen.getByText('Este es el inicio de la conversación')).toBeInTheDocument();
+  });
+
+  it('al reconectar recupera páginas hasta encontrar el último mensaje conocido y conserva el cursor anterior', async () => {
+    const lookup = vi.mocked(roomsApi.history)
+      .mockResolvedValueOnce(page([msg(2), msg(3)], msg(2).id))
+      .mockResolvedValueOnce(page([msg(5), msg(6)], msg(5).id))
+      .mockResolvedValueOnce(page([msg(3), msg(4)], msg(3).id))
+      .mockResolvedValueOnce(page([msg(1)]));
+    enter();
+    await screen.findByRole('button', { name: 'Cargar mensajes anteriores' });
+    act(() => { events().unavailable(); events().joined(vi.fn()); });
+    await waitFor(() => expect(visible()).toEqual(['Mensaje 2', 'Mensaje 3', 'Mensaje 4', 'Mensaje 5', 'Mensaje 6']));
+    await userEvent.click(screen.getByRole('button', { name: 'Cargar mensajes anteriores' }));
+    expect(lookup.mock.calls.map(([, before]) => before)).toEqual([null, null, msg(5).id, msg(2).id]);
+    expect(visible()[0]).toBe('Mensaje 1');
   });
 });
