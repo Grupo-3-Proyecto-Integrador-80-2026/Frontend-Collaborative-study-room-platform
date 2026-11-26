@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useRoomHistory } from './useRoomHistory';
 import { MAX_MESSAGE_LENGTH, type ChatMessage, type SendMessage } from '../services/chat';
 
 export interface ChatEntry extends ChatMessage {
@@ -10,6 +11,13 @@ export function useRoomChat(roomId: string, authorId: string, authorName: string
   const [messages, setMessages] = useState<ChatEntry[]>([]);
   const [draft, setDraft] = useState('');
   const [sender, setSender] = useState<SendMessage | null>(null);
+  const { entries, history, syncHistory } = useRoomHistory(roomId);
+  const timeline = useMemo(() => {
+    const byId = new Map<string, ChatEntry>(entries.map(m => [m.id, m]));
+    for (const m of messages) byId.set(m.id, m);
+    return [...byId.values()].sort((a, b) =>
+      Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }, [entries, messages]);
 
   function received(message: ChatMessage) {
     if (message.roomId !== roomId) return;
@@ -43,5 +51,6 @@ export function useRoomChat(roomId: string, authorId: string, authorName: string
     void deliver(message.id, message.text, sender);
   }
 
-  return { messages, draft, setDraft, submit, retry, connected: Boolean(sender), received, setSender };
+  return { messages: timeline, liveCount: messages.length, latestLive: messages.at(-1), history, syncHistory,
+    draft, setDraft, submit, retry, connected: Boolean(sender), received, setSender };
 }

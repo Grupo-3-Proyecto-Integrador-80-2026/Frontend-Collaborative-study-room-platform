@@ -1,11 +1,15 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, MessageSquare, Send } from 'lucide-react';
 import type { ChatEntry } from '../hooks/useRoomChat';
+import type { useRoomHistory } from '../hooks/useRoomHistory';
 import { MAX_MESSAGE_LENGTH } from '../services/chat';
 import { Button } from './ui/Button';
 
 interface Props {
   messages: ChatEntry[];
+  liveCount: number;
+  latestLive?: ChatEntry;
+  history: ReturnType<typeof useRoomHistory>['history'];
   uid: string;
   visibleOnMobile: boolean;
   connected: boolean;
@@ -16,14 +20,23 @@ interface Props {
 }
 
 const clock = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
+const day = new Intl.DateTimeFormat('es-CO', { dateStyle: 'long' });
 
-export function RoomChat({ messages, uid, visibleOnMobile, connected, draft, setDraft, submit, retry }: Props) {
+export function RoomChat({ messages, liveCount, latestLive, history, uid, visibleOnMobile, connected, draft, setDraft, submit, retry }: Props) {
   const viewport = useRef<HTMLDivElement>(null);
-  // null: seguir el final; número: cuántos mensajes había al desplazarse hacia arriba.
+  const firstRow = useRef<{ element: HTMLElement; top: number } | null>(null);
+  // Solo los mensajes en vivo cuentan para «Mensajes nuevos», nunca una página anterior.
   const [readCount, setReadCount] = useState<number | null>(null);
-  const unread = readCount === null ? 0 : messages.length - readCount;
+  const unread = readCount === null ? 0 : liveCount - readCount;
   useLayoutEffect(() => {
-    if (readCount === null && viewport.current) viewport.current.scrollTop = viewport.current.scrollHeight;
+    const box = viewport.current;
+    if (!box) return;
+    if (readCount === null) box.scrollTop = box.scrollHeight;
+    else if (firstRow.current && box.contains(firstRow.current.element)) {
+      box.scrollTop += firstRow.current.element.offsetTop - firstRow.current.top;
+    }
+    const element = box.querySelector<HTMLElement>('li');
+    firstRow.current = element ? { element, top: element.offsetTop } : null;
   }, [messages, readCount, visibleOnMobile]);
 
   return (
@@ -34,19 +47,45 @@ export function RoomChat({ messages, uid, visibleOnMobile, connected, draft, set
         </h2>
         <span className="text-sm text-slate-600">{messages.length} {messages.length === 1 ? 'mensaje' : 'mensajes'}</span>
       </header>
-      <div ref={viewport} role="log" aria-live="polite" aria-relevant="additions" aria-label="Mensajes del chat" tabIndex={0}
+      <div className="px-4 py-2 text-center text-sm text-slate-700">
+        {history.phase === 'loading' ? <p role="status">Cargando mensajes…</p>
+          : history.phase === 'error' ? <div className="rounded-xl bg-rose-50 p-2">
+            <p role="alert">No pudimos cargar los mensajes. Revisa tu conexión.</p>
+            <Button variant="outline" onClick={() => {
+              viewport.current?.focus({ preventScroll: true });
+              history.retry();
+            }}>Reintentar historial</Button>
+          </div>
+          : history.hasOlder ? <Button variant="outline" aria-disabled={history.phase === 'loading-older'}
+            onClick={() => {
+              if (history.phase === 'loading-older') return;
+              setReadCount(prev => prev ?? liveCount);
+              viewport.current?.focus({ preventScroll: true });
+              history.loadOlder();
+            }}>{history.phase === 'loading-older' ? 'Cargando anteriores…' : 'Cargar mensajes anteriores'}</Button>
+          : messages.length > 0 && <p>Este es el inicio de la conversación</p>}
+      </div>
+      <p className="sr-only" role="status">{history.phase === 'loading-older' ? 'Cargando mensajes anteriores…' : history.notice}</p>
+      {/* Los lotes se anuncian con un resumen, no leyendo hasta 50 mensajes seguidos. */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {latestLive && !latestLive.status && <span key={latestLive.id}>{latestLive.authorName}: {latestLive.text}</span>}
+      </div>
+      <div ref={viewport} role="log" aria-live="off" aria-label="Mensajes del chat" tabIndex={0}
         onScroll={e => {
           const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
           const atEnd = scrollHeight - scrollTop - clientHeight <= 16;
-          setReadCount(previous => atEnd ? null : previous ?? messages.length);
+          setReadCount(previous => atEnd ? null : previous ?? liveCount);
         }}
-        className="h-[48dvh] lg:h-[420px] overflow-y-auto overscroll-contain p-4 sm:p-5 bg-slate-50">
-        {!messages.length && <p className="text-center text-sm text-slate-600 py-8">Aún no hay mensajes en esta sesión. Escribe el primero para empezar la conversación.</p>}
+        className="relative h-[48dvh] lg:h-[420px] overflow-y-auto [overflow-anchor:none] overscroll-contain p-4 sm:p-5 bg-slate-50">
+        {!messages.length && history.phase === 'ready' && <p className="text-center text-sm text-slate-600 py-8">Aún no hay mensajes en esta sala. Escribe el primero para empezar la conversación.</p>}
         <ul className="space-y-3.5">
-          {messages.map(message => {
+          {messages.map((message, index) => {
             const own = message.authorId === uid;
+            const date = day.format(new Date(message.createdAt));
             return (
               <li key={message.localKey ?? message.id} className={`flex flex-col ${own ? 'items-end' : 'items-start'}`}>
+                {(index === 0 || date !== day.format(new Date(messages[index - 1].createdAt))) &&
+                  <span className="self-center text-xs font-semibold text-slate-600 my-2">{date}</span>}
                 <div className="max-w-[85%] text-xs text-slate-700 break-words">
                   <strong>{message.authorName}{own && ' (tú)'}</strong>{' · '}
                   <time dateTime={message.createdAt}>{clock.format(new Date(message.createdAt))}</time>
