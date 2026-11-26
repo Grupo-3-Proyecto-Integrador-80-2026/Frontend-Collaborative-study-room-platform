@@ -73,7 +73,7 @@ El chat utiliza el socket autenticado de la sala. Envía `message:send` con `{ro
 
 ### Comprobar US-11: historial de chat
 
-El frontend consulta `GET /api/rooms/:id/messages?limit=50` con el token de sesión. La API debe incluir US-11 y tener listo en Firestore el índice compuesto `messages: roomId ASC, createdAt DESC` definido en `Backend-API/firestore.indexes.json`. Si la ruta aparece en Swagger y los registros de la API muestran `FAILED_PRECONDITION` al consultar, verifica el estado de ese índice.
+El frontend consulta `GET /api/rooms/:id/messages?limit=50` con el token de sesión. La API debe incluir US-11 y tener listo en Firestore el índice compuesto `messages: roomId ASC, createdAt DESC` definido en `Backend-API/firestore.indexes.json`. Si la ruta aparece en Swagger y los registros de la API muestran `FAILED_PRECONDITION` al consultar, verifica el estado de ese índice. Debe desplegarlo quien administra el proyecto Firebase con `firebase deploy --only firestore:indexes`; la cuenta de servicio de la API puede consultarlo, pero no crearlo.
 
 1. Abre una sala vacía. Envía mensajes desde dos cuentas y recarga: deben reaparecer en orden, con autor y hora, sin duplicados.
 2. En una sala con más de 50 mensajes, selecciona **Cargar mensajes anteriores** por teclado. Deben aparecer antes de los que estabas leyendo, sin saltar al final ni contarse como mensajes nuevos. Al llegar al principio desaparece el botón.
