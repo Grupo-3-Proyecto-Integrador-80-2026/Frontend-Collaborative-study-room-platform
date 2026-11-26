@@ -30,7 +30,7 @@ function RoomView({ id }: { id: string }) {
   const { profile, firebaseUser } = useAuth();
   const fullName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : '';
   const uid = firebaseUser?.uid ?? '';
-  const { received, setSender, ...chat } = useRoomChat(id, uid, fullName);
+  const { received, setSender, syncHistory, ...chat } = useRoomChat(id, uid, fullName);
   const onMessage = useEffectEvent(received);
   const [name, setName] = useState('Sala de estudio');
   const [ownerId, setOwnerId] = useState('');
@@ -64,9 +64,17 @@ function RoomView({ id }: { id: string }) {
         setOwnerId(room.ownerId);
         setName(room.name);
         setLoadState(own ? 'ready' : 'connecting');
+        // El anfitrión también puede leer el historial si el servicio realtime está caído.
+        if (own) syncHistory();
         let admitted = own;
         stop = watchRoom(id, firebaseUser, {
-          joined: (send) => { admitted = true; setSender(() => send); setLiveError(false); setLoadState('ready'); },
+          joined: (send) => {
+            admitted = true;
+            setSender(() => send);
+            setLiveError(false);
+            setLoadState('ready');
+            syncHistory();
+          },
           messageReceived: onMessage,
           membersChanged: setMembers,
           renamed: setName,
@@ -90,7 +98,7 @@ function RoomView({ id }: { id: string }) {
       controller.abort();
       stop?.();
     };
-  }, [id, firebaseUser, reloadKey, setSender]);
+  }, [id, firebaseUser, reloadKey, setSender, syncHistory]);
 
   // Tras crear la sala, el foco va a la confirmación para que el lector la lea.
   useEffect(() => {

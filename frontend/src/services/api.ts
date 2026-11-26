@@ -1,4 +1,5 @@
 import { auth } from '../config/firebase';
+import type { ChatMessage } from './chat';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -153,6 +154,13 @@ export const roomsApi = {
   listMine: () => apiFetch<{ success: boolean; rooms: Room[] }>('/api/rooms', {}, true),
   getById: (id: string, signal?: AbortSignal) =>
     apiFetch<{ success: boolean; room: Room }>(`/api/rooms/${encodeURIComponent(id)}`, { signal }, true),
+  history: (id: string, before: string | null, signal: AbortSignal) => {
+    const query = new URLSearchParams({ limit: '50' });
+    if (before) query.set('before', before);
+    return apiFetch<{ success: boolean; messages: ChatMessage[]; nextBefore: string | null }>(
+      `/api/rooms/${encodeURIComponent(id)}/messages?${query}`, { signal }, true
+    );
+  },
   rename: (id: string, name: string) =>
     apiFetch<null>(`/api/rooms/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ name }) }, true),
   remove: (id: string) =>
