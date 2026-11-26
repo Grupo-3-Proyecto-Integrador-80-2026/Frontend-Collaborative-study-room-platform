@@ -64,6 +64,7 @@ describe('US-06 | E2 | panel vacío y con salas', () => {
     vi.spyOn(roomsApi, 'listMine').mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     renderAt();
     expect(await screen.findByText('Cargando tus salas de estudio...')).toBeInTheDocument();
+    await waitFor(() => expect(roomsApi.listMine).toHaveBeenCalled());
     await act(async () => finish({ success: true, rooms: [] }));
     expect(await screen.findByRole('heading', { name: 'Aún no tienes salas creadas' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '¡Hola, Ana!' })).toBeInTheDocument();
