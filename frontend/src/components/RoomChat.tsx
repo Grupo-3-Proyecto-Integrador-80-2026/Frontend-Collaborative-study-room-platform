@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, MessageSquare, Send } from 'lucide-react';
+import { ArrowDown, Loader2, MessageSquare, Send } from 'lucide-react';
 import type { ChatEntry } from '../hooks/useRoomChat';
 import type { useRoomHistory } from '../hooks/useRoomHistory';
 import { MAX_MESSAGE_LENGTH } from '../services/chat';
@@ -48,7 +48,7 @@ export function RoomChat({ messages, liveCount, latestLive, history, uid, visibl
         <span className="text-sm text-slate-600">{messages.length} {messages.length === 1 ? 'mensaje' : 'mensajes'}</span>
       </header>
       <div className="px-4 py-2 text-center text-sm text-slate-700">
-        {history.phase === 'loading' ? <p role="status">Cargando mensajes…</p>
+        {history.phase === 'loading' ? <p role="status" className="inline-flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-indigo-600" aria-hidden="true" />Cargando mensajes…</p>
           : history.phase === 'error' ? <div className="rounded-xl bg-rose-50 p-2">
             <p role="alert">No pudimos cargar los mensajes. Revisa tu conexión.</p>
             <Button variant="outline" onClick={() => {
@@ -56,13 +56,12 @@ export function RoomChat({ messages, liveCount, latestLive, history, uid, visibl
               history.retry();
             }}>Reintentar historial</Button>
           </div>
-          : history.hasOlder ? <Button variant="outline" aria-disabled={history.phase === 'loading-older'}
+          : history.hasOlder ? <Button variant="outline" loading={history.phase === 'loading-older'} loadingText="Cargando anteriores…"
             onClick={() => {
-              if (history.phase === 'loading-older') return;
               setReadCount(prev => prev ?? liveCount);
               viewport.current?.focus({ preventScroll: true });
               history.loadOlder();
-            }}>{history.phase === 'loading-older' ? 'Cargando anteriores…' : 'Cargar mensajes anteriores'}</Button>
+            }}>Cargar mensajes anteriores</Button>
           : messages.length > 0 && <p>Este es el inicio de la conversación</p>}
       </div>
       <p className="sr-only" role="status">{history.phase === 'loading-older' ? 'Cargando mensajes anteriores…' : history.notice}</p>

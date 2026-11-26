@@ -511,7 +511,7 @@ describe('US-11 | historial de chat', () => {
     await user.click(olderButton);
     expect(visible()).toEqual(['Mensaje 3', 'Mensaje 4']);
     await user.click(screen.getByRole('button', { name: 'Reintentar historial' }));
-    expect(await screen.findByRole('button', { name: 'Cargando anteriores…' })).toHaveAttribute('aria-disabled', 'true');
+    expect(await screen.findByRole('button', { name: 'Cargando anteriores…' })).toBeDisabled();
     act(() => events().messageReceived(msg(5)));
     await act(async () => resolve(page([msg(1), msg(2)])));
     expect(lookup.mock.calls.map(([, before]) => before)).toEqual([null, msg(3).id, msg(3).id]);
