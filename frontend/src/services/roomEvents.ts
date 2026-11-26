@@ -1,8 +1,10 @@
 import { io } from 'socket.io-client';
 import type { User } from 'firebase/auth';
+import { MAX_MESSAGE_LENGTH, type ChatMessage, type SendMessage } from './chat';
 
 interface RoomListeners {
-  joined(): void;
+  joined(send: SendMessage): void;
+  messageReceived(message: ChatMessage): void;
   membersChanged(members: string[]): void;
   renamed(name: string): void;
   deleted(): void;
@@ -19,6 +21,7 @@ export function watchRoom(roomId: string, user: User, listeners: RoomListeners) 
   }
   let active = true;
   let joinedBefore = false;
+  let admitted = false;
   const members = new Set<string>();
   const socket = io(url, {
     autoConnect: false,
@@ -26,6 +29,24 @@ export function watchRoom(roomId: string, user: User, listeners: RoomListeners) 
       void user.getIdToken().then(token => { if (active) done({ token }); })
         .catch(() => { if (active) listeners.unavailable(); });
     },
+  });
+  const send: SendMessage = async (value) => {
+    const text = value.trim();
+    if (!active || !admitted || !socket.connected || !text || text.length > MAX_MESSAGE_LENGTH) {
+      return { status: 'failed' };
+    }
+    try {
+      const ack = await socket.timeout(8000).emitWithAck('message:send', { roomId, text });
+      if (ack?.ok === false) return { status: 'failed' };
+      return ack?.ok && ack.message?.roomId === roomId
+        ? { status: 'sent', message: ack.message }
+        : { status: 'unconfirmed' };
+    } catch {
+      return { status: 'unconfirmed' };
+    }
+  };
+  socket.on('message:new', (message: ChatMessage) => {
+    if (message?.roomId === roomId) listeners.messageReceived(message);
   });
   socket.on('connect', async () => {
     const connection = socket.id;
@@ -37,7 +58,8 @@ export function watchRoom(roomId: string, user: User, listeners: RoomListeners) 
         for (const uid of ack.members) members.add(uid);
         listeners.membersChanged([...members]);
         joinedBefore = true;
-        listeners.joined();
+        admitted = true;
+        listeners.joined(send);
       } else if (ack.code === 'ROOM_NOT_FOUND' || ack.code === 'INVALID_ROOM_ID') {
         if (joinedBefore) listeners.deleted();
         else listeners.missing();
@@ -60,10 +82,14 @@ export function watchRoom(roomId: string, user: User, listeners: RoomListeners) 
     if (data?.roomId === roomId && typeof data.name === 'string') listeners.renamed(data.name);
   });
   socket.on('room:deleted', (data) => {
-    if (data?.roomId === roomId) listeners.deleted();
+    if (data?.roomId === roomId) {
+      admitted = false;
+      listeners.deleted();
+    }
   });
   socket.on('connect_error', listeners.unavailable);
   socket.on('disconnect', (reason) => {
+    admitted = false;
     listeners.unavailable();
     // El servidor cierra la conexión cuando vence el token.
     if (reason === 'io server disconnect') socket.connect();

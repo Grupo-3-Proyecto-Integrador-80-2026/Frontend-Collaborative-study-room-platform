@@ -62,9 +62,28 @@ La API debe incluir `GET /api/rooms/:id` de US-08. La presencia se obtiene del A
 3. Abre `/salas/<id>` con sesión y en una ventana privada. En el segundo caso, inicia sesión y comprueba que vuelves a la misma sala, incluso si Google solicita completar el perfil.
 4. Para el DUE, registra el éxito y el error con la URL publicada visible y la revisión de accesibilidad en móvil y escritorio.
 
+### Comprobar US-10: mensajería instantánea
+
+El chat utiliza el socket autenticado de la sala. Envía `message:send` con `{roomId, text}`: el emisor confirma su burbuja con el ACK del servidor y los demás reciben `message:new`. El servidor de US-10 entrega el nombre del autor y la fecha. Un timeout deja el envío **sin confirmar**; no se reenvía automáticamente.
+
+1. En la aplicación publicada abre A y B en una sala y C en otra. Envía desde A mediante `Enter`: A y B deben ver un solo mensaje con autor, hora y texto; C no debe recibirlo.
+2. Comprueba que `Shift+Enter` inserta un salto de línea y que no se pueden enviar espacios solos.
+3. Con suficientes mensajes para desplazar el chat, sube en B y escribe un borrador. Envía desde A: B debe conservar la posición, el foco y el borrador. Activa **Mensajes nuevos** para ver el último. Repite al final del chat para comprobar el desplazamiento automático.
+4. Desconecta la red en B: debe aparecer un aviso y bloquearse el envío hasta reconectar. Verifica con teclado y lector de pantalla que se anuncien los mensajes sin mover el foco; captura el éxito y el error con la URL de producción visible.
+
 ---
 
 ## Ejecución en Modo Local (Desarrollo)
+
+Para entrar a salas en desarrollo se necesitan **la API y el servicio Socket.IO**. En el `.env` del frontend usa `VITE_API_URL=http://localhost:3000` y `VITE_REALTIME_URL=http://localhost:3001`.
+
+- **API:** desde `Backend-API/`, con su `.env` configurado, ejecuta `npm run dev`. Comprueba en `http://localhost:3000/api-docs/` que `/api/rooms/{id}` incluye **GET**, además de PATCH y DELETE.
+- **Tiempo real:** en otra terminal, desde `Backend-API/`, con las dependencias de `backend-realtime` instaladas y Node 22+, ejecuta:
+  ```bash
+  npm --prefix backend-realtime run build
+  PORT=3001 FRONTEND_ORIGIN=http://localhost:5173 node --env-file=.env backend-realtime/dist/server.js
+  ```
+  El proceso usa la credencial de Firebase configurada en el `.env` de la API. `http://localhost:3001/health` debe responder `{"status":"ok"}`. Abre Vite con el origen exacto configurado en `FRONTEND_ORIGIN`.
 
 Sigue estos pasos para compilar y ejecutar el frontend en tu máquina local:
 

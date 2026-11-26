@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ import Dashboard from '../src/pages/Dashboard';
 import Room from '../src/pages/Room';
 import { ApiError, authApi, roomsApi, type Room as RoomData, type UserProfile } from '../src/services/api';
 import { watchRoom } from '../src/services/roomEvents';
+import type { ChatMessage, SendMessage, SendResult } from '../src/services/chat';
 
 vi.mock('../src/services/roomEvents', () => ({ watchRoom: vi.fn() }));
 
@@ -58,9 +59,11 @@ beforeEach(() => {
 
 describe('US-06 | E2 | panel vacío y con salas', () => {
   it('muestra la carga y luego un mensaje amigable si no hay salas', async () => {
-    vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [] });
+    let finish!: (result: { success: boolean; rooms: RoomData[] }) => void;
+    vi.spyOn(roomsApi, 'listMine').mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     renderAt();
     expect(await screen.findByText('Cargando tus salas de estudio...')).toBeInTheDocument();
+    await act(async () => finish({ success: true, rooms: [] }));
     expect(await screen.findByRole('heading', { name: 'Aún no tienes salas creadas' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '¡Hola, Ana!' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Crear sala' })).toHaveLength(2);
@@ -263,7 +266,7 @@ describe('US-07 | gestión de salas', () => {
     vi.spyOn(roomsApi, 'getById').mockResolvedValue({ success: true, room: { ...older, ownerId: 'host' } });
     const stop = vi.fn();
     vi.mocked(watchRoom).mockImplementation((_id, _user, events) => {
-      events.joined();
+      events.joined(vi.fn());
       events.renamed(older.name);
       return stop;
     });
@@ -318,6 +321,18 @@ describe('US-08 | unirse a una sala', () => {
     expect(watchRoom).not.toHaveBeenCalled();
   });
 
+  it('un 404 de ruta no disponible no acusa al ID ni inicia el ingreso', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [] });
+    vi.spyOn(roomsApi, 'getById').mockRejectedValue(new ApiError(404, 'NOT_FOUND', 'La ruta no existe.'));
+    renderAt();
+    const input = await screen.findByRole('textbox', { name: 'ID de la sala' });
+    await user.type(input, `${older.id}{Enter}`);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no está disponible en la API/);
+    expect(input).not.toHaveAttribute('aria-invalid', 'true');
+    expect(watchRoom).not.toHaveBeenCalled();
+  });
+
   it('recorta el ID, espera la admisión en tiempo real y muestra la presencia de la sala', async () => {
     const user = userEvent.setup();
     vi.spyOn(roomsApi, 'listMine').mockResolvedValue({ success: true, rooms: [] });
@@ -334,11 +349,90 @@ describe('US-08 | unirse a una sala', () => {
     expect(await screen.findByText('Conectando con la sala…')).toBeInTheDocument();
     const [id, , events] = vi.mocked(watchRoom).mock.calls[0];
     expect(id).toBe(older.id);
-    act(() => { events.membersChanged([room.ownerId, sessionUser.uid]); events.joined(); });
+    act(() => { events.membersChanged([room.ownerId, sessionUser.uid]); events.joined(vi.fn()); });
     expect(screen.getByRole('heading', { name: room.name })).toHaveFocus();
     expect(screen.getByText(/Tu rol:/)).toHaveTextContent('Participante');
     expect(screen.getByText('2 personas conectadas')).toBeInTheDocument();
     act(() => events.membersChanged([sessionUser.uid]));
     expect(screen.getByText('1 persona conectada')).toBeInTheDocument();
+  });
+});
+
+describe('US-10 | chat de la sala', () => {
+  const message: ChatMessage = {
+    id: 'msg-1', roomId: older.id, authorId: 'luis', authorName: 'Luis Díaz',
+    createdAt: '2026-11-25T12:30:00.000Z', text: '¿Estudiamos?',
+  };
+
+  async function openChat() {
+    const send = vi.fn<SendMessage>();
+    vi.spyOn(roomsApi, 'getById').mockResolvedValue({ success: true, room: older });
+    vi.mocked(watchRoom).mockImplementation((_id, _user, events) => { events.joined(send); return () => {}; });
+    renderAt(`/salas/${older.id}`);
+    const input = await screen.findByRole('textbox', { name: 'Escribe un mensaje' });
+    return { user: userEvent.setup(), input, send, events: vi.mocked(watchRoom).mock.calls[0][2] };
+  }
+
+  it('bloquea espacios, admite Shift+Enter y confirma una sola burbuja propia por ACK', async () => {
+    const { user, input, send } = await openChat();
+    let confirm!: (ack: SendResult) => void;
+    send.mockImplementation(() => new Promise(resolve => { confirm = resolve; }));
+    await user.type(input, '   {Enter}');
+    expect(send).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Enviar' })).toBeDisabled();
+    await user.type(input, 'Hola{Shift>}{Enter}{/Shift}equipo  {Enter}');
+    expect(send).toHaveBeenCalledExactlyOnceWith('Hola\nequipo');
+    expect(screen.getByText('Enviando…')).toBeInTheDocument();
+    expect(input).toHaveValue('');
+    await act(async () => confirm({ status: 'sent', message: { ...message, authorId: sessionUser.uid, authorName: 'Ana Pérez', text: 'Hola\nequipo' } }));
+    const log = screen.getByRole('log', { name: 'Mensajes del chat' });
+    expect(within(log).getAllByRole('listitem')).toHaveLength(1);
+    expect(log).toHaveTextContent('Ana Pérez (tú)');
+    expect(log.querySelector('time')).toHaveAttribute('datetime', message.createdAt);
+    expect(screen.queryByText('Enviando…')).not.toBeInTheDocument();
+    expect(input).toHaveFocus();
+  });
+
+  it('anuncia solo mensajes de la sala, sin duplicar ni mover el foco; respeta a quien lee arriba', async () => {
+    const { user, input, events } = await openChat();
+    const log = screen.getByRole('log');
+    Object.defineProperties(log, { clientHeight: { value: 200 }, scrollHeight: { value: 800 } });
+    await user.click(input);
+    act(() => events.messageReceived(message));
+    expect(log.scrollTop).toBe(800);
+    log.scrollTop = 100;
+    fireEvent.scroll(log);
+    act(() => {
+      events.messageReceived({ ...message, id: 'otro', roomId: newer.id, text: 'Sala ajena' });
+      events.messageReceived(message);
+      events.messageReceived({ ...message, id: 'msg-2', text: 'Segundo' });
+    });
+    expect(within(log).getAllByRole('listitem')).toHaveLength(2);
+    expect(log).not.toHaveTextContent('Sala ajena');
+    expect(log).toHaveAttribute('aria-live', 'polite');
+    expect(log.scrollTop).toBe(100);
+    expect(input).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Mensajes nuevos (1)' }));
+    expect(log.scrollTop).toBe(800);
+    expect(screen.queryByRole('button', { name: /Mensajes nuevos/ })).not.toBeInTheDocument();
+  });
+
+  it('conserva el borrador al desconectar y distingue rechazo de envío no confirmado', async () => {
+    const { user, input, send, events } = await openChat();
+    await user.type(input, 'Mi pregunta');
+    act(() => events.unavailable());
+    await user.keyboard('{Enter}');
+    expect(send).not.toHaveBeenCalled();
+    expect(input).toHaveValue('Mi pregunta');
+    expect(screen.getByRole('alert')).toHaveTextContent(/conexión/);
+    act(() => events.joined(send));
+    send.mockResolvedValueOnce({ status: 'failed' }).mockResolvedValueOnce({ status: 'unconfirmed' });
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se envió.');
+    await user.click(screen.getByRole('button', { name: 'Reintentar envío' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos confirmar el envío');
+    expect(screen.queryByRole('button', { name: 'Reintentar envío' })).not.toBeInTheDocument();
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(within(screen.getByRole('log')).getAllByRole('listitem')).toHaveLength(1);
   });
 });

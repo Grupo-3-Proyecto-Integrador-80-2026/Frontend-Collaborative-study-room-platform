@@ -36,9 +36,11 @@ export function JoinRoomForm() {
       if (!controller.signal.aborted) navigate(`/salas/${id}`);
     } catch (err) {
       if (controller.signal.aborted) return;
-      if (err instanceof ApiError && (err.statusCode === 404 || err.code === 'INVALID_ROOM_ID')) {
-        setFieldError(err.statusCode === 404 ? missingRoomHelp : roomIdHelp);
+      if (err instanceof ApiError && (err.code === 'ROOM_NOT_FOUND' || err.code === 'INVALID_ROOM_ID')) {
+        setFieldError(err.code === 'ROOM_NOT_FOUND' ? missingRoomHelp : roomIdHelp);
         input.current?.focus();
+      } else if (err instanceof ApiError && err.statusCode === 404) {
+        setServiceError('La consulta de salas por ID no está disponible en la API.');
       } else {
         setServiceError(err instanceof ApiError && err.statusCode === 403
           ? 'Tu cuenta no tiene permiso para entrar en esta sala.'
